@@ -39,6 +39,8 @@ $endif$
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{csquotes}
+\usepackage{longtable}
+\usepackage{booktabs}
 \usepackage{fancyhdr}
 \usepackage{microtype}
 
@@ -94,6 +96,10 @@ $if(bibliography)$
 \usepackage[style=numeric,backend=biber]{biblatex}
 \addbibresource{$bibliography$}
 $endif$
+
+% Pandoc compatibility macros
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 
 \begin{document}
 

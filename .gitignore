@@ -96,3 +96,6 @@ ui_*.h
 *.dmg
 *.zip
 *.tar.gz
+
+test-*.md
+test-*.pdf
