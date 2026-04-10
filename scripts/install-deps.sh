@@ -35,7 +35,8 @@ case $DISTRO in
             qt6-base-dev-tools \
             pandoc \
             texlive-xetex \
-            texlive-fonts-recommended
+            texlive-fonts-recommended \
+            xvfb
         ;;
     
     fedora|rhel|centos)
@@ -47,7 +48,8 @@ case $DISTRO in
             qt6-qtbase-devel \
             pandoc \
             texlive-xetex \
-            texlive-collection-fontsrecommended
+            texlive-collection-fontsrecommended \
+            xorg-x11-server-Xvfb
         ;;
     
     arch|manjaro)
@@ -59,7 +61,8 @@ case $DISTRO in
             qt6-base \
             pandoc \
             texlive-xetex \
-            texlive-fontsrecommended
+            texlive-fontsrecommended \
+            xorg-server-xvfb
         ;;
     
     *)

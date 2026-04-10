@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-linux:
+    name: Build on Ubuntu
+    runs-on: ubuntu-24.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          build-essential \
+          cmake \
+          qt6-base-dev \
+          qt6-base-dev-tools \
+          pandoc \
+          texlive-xetex \
+          texlive-fonts-recommended \
+          xvfb
+    
+    - name: Cache CMake build
+      uses: actions/cache@v4
+      with:
+        path: app/build
+        key: ${{ runner.os }}-cmake-${{ hashFiles('app/CMakeLists.txt', 'app/src/**', 'app/tests/**') }}
+        restore-keys: |
+          ${{ runner.os }}-cmake-
+    
+    - name: Configure CMake
+      run: |
+        cd app
+        mkdir -p build
+        cd build
+        cmake ..
+    
+    - name: Build
+      run: |
+        cd app/build
+        cmake --build . --config Release
+    
+    - name: Run tests
+      run: |
+        cd app/build
+        xvfb-run -a --server-args="-screen 0 1024x768x24" ctest --output-on-failure
+      env:
+        QT_QPA_PLATFORM: offscreen
+    
+    - name: Upload artifacts (main only)
+      if: success() && github.ref == 'refs/heads/main'
+      uses: actions/upload-artifact@v4
+      with:
+        name: texloom-linux
+        path: app/build/bin/texloom
+        retention-days: 90
