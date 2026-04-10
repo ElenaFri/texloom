@@ -15,6 +15,16 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
+    - name: Cache apt packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          /var/cache/apt/archives
+          /var/lib/apt/lists
+        key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/ci.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-apt-
+    
     - name: Install dependencies
       run: |
         sudo apt update
@@ -27,6 +37,14 @@ jobs:
           texlive-xetex \
           texlive-fonts-recommended \
           xvfb
+    
+    - name: Cache CMake build
+      uses: actions/cache@v4
+      with:
+        path: app/build
+        key: ${{ runner.os }}-cmake-${{ hashFiles('app/CMakeLists.txt', 'app/src/**', 'app/tests/**') }}
+        restore-keys: |
+          ${{ runner.os }}-cmake-
     
     - name: Configure CMake
       run: |
