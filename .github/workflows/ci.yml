@@ -15,16 +15,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Cache apt packages
-      uses: actions/cache@v4
-      with:
-        path: |
-          /var/cache/apt/archives
-          /var/lib/apt/lists
-        key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/ci.yml') }}
-        restore-keys: |
-          ${{ runner.os }}-apt-
-    
     - name: Install dependencies
       run: |
         sudo apt update
@@ -49,7 +39,7 @@ jobs:
     - name: Configure CMake
       run: |
         cd app
-        mkdir build
+        mkdir -p build
         cd build
         cmake ..
     
