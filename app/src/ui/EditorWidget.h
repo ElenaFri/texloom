@@ -25,17 +25,23 @@ namespace texloom
         explicit EditorWidget(QWidget *parent = nullptr);
         ~EditorWidget() override = default;
 
+        // Non-copyable and non-movable (QWidget already is)
+        EditorWidget(const EditorWidget &) = delete;
+        EditorWidget &operator=(const EditorWidget &) = delete;
+        EditorWidget(EditorWidget &&) = delete;
+        EditorWidget &operator=(EditorWidget &&) = delete;
+
         // File operations
         bool loadFile(const QString &filePath);
         bool saveFile(const QString &filePath);
         bool saveFile(); // Save to current file
 
         // File properties
-        QString currentFile() const { return m_currentFile; }
-        bool isModified() const { return document()->isModified(); }
+        [[nodiscard]] QString currentFile() const noexcept { return m_currentFile; }
+        [[nodiscard]] bool isModified() const { return document()->isModified(); }
 
         // Editor mode
-        Mode editorMode() const { return m_mode; }
+        [[nodiscard]] Mode editorMode() const noexcept { return m_mode; }
         void setEditorMode(Mode mode);
 
     signals:

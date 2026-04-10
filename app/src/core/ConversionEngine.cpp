@@ -23,18 +23,18 @@ namespace texloom
 
     ConversionEngine::~ConversionEngine()
     {
+        // QProcess objects are auto-deleted via Qt parent ownership
         if (m_pandocProcess)
         {
             m_pandocProcess->kill();
-            delete m_pandocProcess;
         }
 
         if (m_xelatexProcess)
         {
             m_xelatexProcess->kill();
-            delete m_xelatexProcess;
         }
 
+        // QTemporaryDir needs manual cleanup
         delete m_tempDir;
     }
 
@@ -108,7 +108,11 @@ namespace texloom
 
     void ConversionEngine::runPandoc(const QString &input, const QString &output)
     {
-        delete m_pandocProcess;
+        // Delete old process if exists (not owned by parent if recreated)
+        if (m_pandocProcess)
+        {
+            m_pandocProcess->deleteLater();
+        }
         m_pandocProcess = new QProcess(this);
 
         connect(m_pandocProcess, &QProcess::finished,
@@ -131,7 +135,11 @@ namespace texloom
 
     void ConversionEngine::runXelatex(const QString &input, const QString &output)
     {
-        delete m_xelatexProcess;
+        // Delete old process if exists (not owned by parent if recreated)
+        if (m_xelatexProcess)
+        {
+            m_xelatexProcess->deleteLater();
+        }
         m_xelatexProcess = new QProcess(this);
 
         connect(m_xelatexProcess, &QProcess::finished,

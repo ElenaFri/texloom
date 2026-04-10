@@ -19,6 +19,12 @@ namespace texloom
         explicit ProjectTreeWidget(QWidget *parent = nullptr);
         ~ProjectTreeWidget() override = default;
 
+        // Non-copyable and non-movable (QWidget already is)
+        ProjectTreeWidget(const ProjectTreeWidget &) = delete;
+        ProjectTreeWidget &operator=(const ProjectTreeWidget &) = delete;
+        ProjectTreeWidget(ProjectTreeWidget &&) = delete;
+        ProjectTreeWidget &operator=(ProjectTreeWidget &&) = delete;
+
         // Tree operations
         void setProjectRoot(const QString &name, const QString &path);
         void addFile(const QString &filePath);

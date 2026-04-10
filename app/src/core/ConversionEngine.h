@@ -29,14 +29,20 @@ namespace texloom
         explicit ConversionEngine(QObject *parent = nullptr);
         ~ConversionEngine() override;
 
+        // Non-copyable and non-movable
+        ConversionEngine(const ConversionEngine &) = delete;
+        ConversionEngine &operator=(const ConversionEngine &) = delete;
+        ConversionEngine(ConversionEngine &&) = delete;
+        ConversionEngine &operator=(ConversionEngine &&) = delete;
+
         // Conversion operations
         void convertToLatex(const QString &markdownFile, const QString &outputLatex);
         void compileToPdf(const QString &latexFile, const QString &outputPdf);
         void convertAll(const QString &markdownFile, const QString &outputPdf);
 
         // State
-        Stage currentStage() const { return m_stage; }
-        bool isBusy() const { return m_stage != Stage::Idle; }
+        [[nodiscard]] Stage currentStage() const noexcept { return m_stage; }
+        [[nodiscard]] bool isBusy() const noexcept { return m_stage != Stage::Idle; }
 
         // Options
         void setPandocOptions(const QStringList &options);

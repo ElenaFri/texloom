@@ -20,11 +20,17 @@ namespace texloom
         explicit PreviewWidget(QWidget *parent = nullptr);
         ~PreviewWidget() override = default;
 
+        // Non-copyable and non-movable (QWidget already is)
+        PreviewWidget(const PreviewWidget &) = delete;
+        PreviewWidget &operator=(const PreviewWidget &) = delete;
+        PreviewWidget(PreviewWidget &&) = delete;
+        PreviewWidget &operator=(PreviewWidget &&) = delete;
+
         // Preview operations
         bool loadPdf(const QString &pdfPath);
         void clear();
 
-        QString currentPdf() const { return m_currentPdf; }
+        [[nodiscard]] QString currentPdf() const noexcept { return m_currentPdf; }
 
     signals:
         void pdfLoaded(const QString &path);

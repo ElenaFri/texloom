@@ -22,6 +22,12 @@ namespace texloom
         explicit ProjectModel(QObject *parent = nullptr);
         ~ProjectModel() override = default;
 
+        // Non-copyable and non-movable
+        ProjectModel(const ProjectModel &) = delete;
+        ProjectModel &operator=(const ProjectModel &) = delete;
+        ProjectModel(ProjectModel &&) = delete;
+        ProjectModel &operator=(ProjectModel &&) = delete;
+
         // Project management
         bool createProject(const QString &name, const QString &path);
         bool loadProject(const QString &projectFilePath);
@@ -35,17 +41,17 @@ namespace texloom
         QStringList files() const;
 
         // Project properties
-        QString projectName() const { return m_projectName; }
-        QString projectPath() const { return m_projectPath; }
-        QString projectFilePath() const { return m_projectFilePath; }
-        bool isModified() const { return m_isModified; }
-        bool isOpen() const { return m_isOpen; }
+        [[nodiscard]] QString projectName() const noexcept { return m_projectName; }
+        [[nodiscard]] QString projectPath() const noexcept { return m_projectPath; }
+        [[nodiscard]] QString projectFilePath() const noexcept { return m_projectFilePath; }
+        [[nodiscard]] bool isModified() const noexcept { return m_isModified; }
+        [[nodiscard]] bool isOpen() const noexcept { return m_isOpen; }
 
         // Settings
-        QString templateName() const { return m_templateName; }
+        [[nodiscard]] QString templateName() const noexcept { return m_templateName; }
         void setTemplateName(const QString &name);
 
-        QString bibliographyFile() const { return m_bibliographyFile; }
+        [[nodiscard]] QString bibliographyFile() const noexcept { return m_bibliographyFile; }
         void setBibliographyFile(const QString &path);
 
     signals:

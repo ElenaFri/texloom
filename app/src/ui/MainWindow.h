@@ -32,6 +32,12 @@ namespace texloom
         explicit MainWindow(QWidget *parent = nullptr);
         ~MainWindow() override;
 
+        // Non-copyable and non-movable
+        MainWindow(const MainWindow &) = delete;
+        MainWindow &operator=(const MainWindow &) = delete;
+        MainWindow(MainWindow &&) = delete;
+        MainWindow &operator=(MainWindow &&) = delete;
+
     protected:
         void closeEvent(QCloseEvent *event) override;
 
