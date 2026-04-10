@@ -21,6 +21,7 @@ macro(add_texloom_test test_name)
 endmacro()
 
 # Test files (to be created)
+add_texloom_test(test_example test_example.cpp)
 # add_texloom_test(test_project test_project.cpp)
 # add_texloom_test(test_document test_document.cpp)
 # add_texloom_test(test_conversion test_conversion.cpp)
