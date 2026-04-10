@@ -1,6 +1,6 @@
 # texloom
 
-![CI](https://github.com/USERNAME/texloom/workflows/CI/badge.svg)
+![CI](https://github.com/ElenaFri/texloom/workflows/CI/badge.svg)
 
 A simple Markdown-to-LaTeX converter and text editor. With (useful) GUI.
 
