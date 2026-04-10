@@ -1,0 +1,153 @@
+% TexLoom Thesis Template
+% Compatible with Pandoc and XeLaTeX
+% Supports English and French
+
+\documentclass[12pt,a4paper,oneside]{book}
+
+% Language configuration (must come before fontspec)
+\usepackage{polyglossia}
+$if(lang)$
+\setmainlanguage{$lang$}
+$else$
+\setmainlanguage{english}
+$endif$
+
+% XeLaTeX packages for Unicode support
+\usepackage{fontspec}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{unicode-math}
+
+% Font configuration (configurable via metadata)
+$if(mainfont)$
+\setmainfont{$mainfont$}
+$else$
+\setmainfont{Latin Modern Roman}
+$endif$
+$if(sansfont)$
+\setsansfont{$sansfont$}
+$else$
+\setsansfont{Latin Modern Sans}
+$endif$
+$if(monofont)$
+\setmonofont{$monofont$}
+$else$
+\setmonofont{Latin Modern Mono}
+$endif$
+
+% Standard packages
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{csquotes}
+\usepackage{fancyhdr}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{microtype}
+
+% Page geometry
+\usepackage[top=3cm, bottom=3cm, left=3.5cm, right=2.5cm]{geometry}
+
+% Line spacing
+\onehalfspacing
+
+% Headers and footers
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE,RO]{\thepage}
+\fancyhead[RE]{\leftmark}
+\fancyhead[LO]{\rightmark}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Chapter style
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries}{\chaptertitlename\ \thechapter}{20pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{0pt}{40pt}
+
+% Pandoc syntax highlighting (if enabled)
+$if(highlighting-macros)$
+$highlighting-macros$
+$endif$
+
+% Hyperref configuration (loaded near the end)
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    citecolor=green,
+$if(author-meta)$
+    pdfauthor={$author-meta$},
+$endif$
+$if(title-meta)$
+    pdftitle={$title-meta$},
+$endif$
+    pdfcreator={TexLoom with Pandoc and XeLaTeX}
+}
+
+% Title and author from metadata
+$if(title)$
+\title{$title$}
+$endif$
+
+$if(author)$
+\author{$for(author)$$author$$sep$ \and $endfor$}
+$endif$
+
+$if(date)$
+\date{$date$}
+$else$
+\date{\today}
+$endif$
+
+% Bibliography
+$if(bibliography)$
+\usepackage[style=numeric,backend=biber,sorting=nyt]{biblatex}
+\addbibresource{$bibliography$}
+$endif$
+
+\begin{document}
+
+% Front matter
+\frontmatter
+
+$if(title)$
+\maketitle
+\cleardoublepage
+$endif$
+
+$if(abstract)$
+\chapter*{Abstract}
+$abstract$
+\cleardoublepage
+$endif$
+
+$if(toc)$
+\tableofcontents
+\cleardoublepage
+$endif$
+
+$if(lof)$
+\listoffigures
+\cleardoublepage
+$endif$
+
+$if(lot)$
+\listoftables
+\cleardoublepage
+$endif$
+
+% Main matter
+\mainmatter
+
+% Document body (Pandoc will insert converted Markdown here)
+$body$
+
+% Back matter
+\backmatter
+
+$if(bibliography)$
+\printbibliography[heading=bibintoc]
+$endif$
+
+\end{document}

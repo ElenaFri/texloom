@@ -12,11 +12,11 @@
 
 ## Architecture
 
-- [ ] GUI: Qt (C++)
+- [x] GUI: Qt (C++)
 - [ ] Editor: text component with Markdown syntax highlighting
   - Code mode (raw Markdown)
   - WYSIWYG mode (visual editing)
-- [ ] Conversion: Pandoc or custom Markdown => LaTeX => PDF pipeline
+- [x] Conversion: Pandoc => LaTeX => PDF pipeline (ConversionEngine implemented)
 - [ ] Preview: embedded PDF viewer
 - [ ] Project manager: `.md` file list/tree
 
@@ -38,5 +38,14 @@ See [images/mockups/](images/mockups/) for editor mode designs
 
 - [x] Pandoc dependency vs. custom Markdown parser? → **Pandoc 3.1+**
 - [x] Which LaTeX engine? (pdflatex / xelatex / lualatex) → **XeLaTeX** (Unicode/multilingual)
-- [ ] Bundled templates: which formats to prioritize? (IEEE, APA, thesis…)
+- [x] Bundled templates: which formats to prioritize? → **article, report, thesis** (Pandoc LaTeX format)
 - [x] Cross-platform scope: Linux only or Windows/macOS too? → **Linux-first, cross-platform ready**
+
+## TODO: Templates Implementation
+
+- [x] Create `app/resources/templates/` folder structure
+- [x] Implement base Pandoc LaTeX template: article.latex
+- [x] Implement base Pandoc LaTeX template: report.latex
+- [x] Implement base Pandoc LaTeX template: thesis.latex
+- [ ] Test template compatibility with Pandoc + XeLaTeX
+- [x] Add template metadata (name, description, author guidelines)

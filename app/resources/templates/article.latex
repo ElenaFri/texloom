@@ -1,0 +1,114 @@
+% TexLoom Article Template
+% Compatible with Pandoc and XeLaTeX
+% Supports English and French
+
+\documentclass[11pt,a4paper]{article}
+
+% Language configuration (must come before fontspec)
+\usepackage{polyglossia}
+$if(lang)$
+\setmainlanguage{$lang$}
+$else$
+\setmainlanguage{english}
+$endif$
+
+% XeLaTeX packages for Unicode support
+\usepackage{fontspec}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{unicode-math}
+
+% Font configuration (configurable via metadata)
+$if(mainfont)$
+\setmainfont{$mainfont$}
+$else$
+\setmainfont{Latin Modern Roman}
+$endif$
+$if(sansfont)$
+\setsansfont{$sansfont$}
+$else$
+\setsansfont{Latin Modern Sans}
+$endif$
+$if(monofont)$
+\setmonofont{$monofont$}
+$else$
+\setmonofont{Latin Modern Mono}
+$endif$
+
+% Standard packages
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{csquotes}
+\usepackage{microtype}
+
+% Page geometry
+\usepackage[top=2.5cm, bottom=2.5cm, left=3cm, right=3cm]{geometry}
+
+% Pandoc syntax highlighting (if enabled)
+$if(highlighting-macros)$
+$highlighting-macros$
+$endif$
+
+% Hyperref configuration (loaded near the end)
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    citecolor=green,
+$if(author-meta)$
+    pdfauthor={$author-meta$},
+$endif$
+$if(title-meta)$
+    pdftitle={$title-meta$},
+$endif$
+    pdfcreator={TexLoom with Pandoc and XeLaTeX}
+}
+
+% Title and author from metadata
+$if(title)$
+\title{$title$}
+$endif$
+
+$if(author)$
+\author{$for(author)$$author$$sep$ \and $endfor$}
+$endif$
+
+$if(date)$
+\date{$date$}
+$else$
+\date{\today}
+$endif$
+
+% Bibliography
+$if(bibliography)$
+\usepackage[style=numeric,backend=biber]{biblatex}
+\addbibresource{$bibliography$}
+$endif$
+
+\begin{document}
+
+$if(title)$
+\maketitle
+$endif$
+
+$if(abstract)$
+\begin{abstract}
+$abstract$
+\end{abstract}
+$endif$
+
+$if(toc)$
+\tableofcontents
+\newpage
+$endif$
+
+% Document body (Pandoc will insert converted Markdown here)
+$body$
+
+$if(bibliography)$
+\printbibliography
+$endif$
+
+\end{document}
