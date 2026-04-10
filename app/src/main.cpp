@@ -1,21 +1,18 @@
 #include <QApplication>
-#include <QMainWindow>
-#include <QLabel>
+#include "ui/MainWindow.h"
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
-    
-    // Temporary main window for testing
-    QMainWindow window;
-    window.setWindowTitle("TexLoom - Development Build");
-    window.resize(800, 600);
-    
-    QLabel* label = new QLabel("TexLoom is loading...\n\nThis is a placeholder window.", &window);
-    label->setAlignment(Qt::AlignCenter);
-    window.setCentralWidget(label);
-    
+
+    // Set application metadata
+    app.setApplicationName("TexLoom");
+    app.setApplicationVersion("0.1.0");
+    app.setOrganizationName("TexLoom");
+
+    // Create and show main window
+    texloom::MainWindow window;
     window.show();
-    
+
     return app.exec();
 }

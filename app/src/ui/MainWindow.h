@@ -1,0 +1,133 @@
+#pragma once
+
+#include <QMainWindow>
+#include <QSplitter>
+#include <QTabWidget>
+#include <QDockWidget>
+
+namespace texloom
+{
+
+    class ProjectModel;
+    class ConversionEngine;
+    class ProjectTreeWidget;
+    class EditorWidget;
+    class PreviewWidget;
+
+    /**
+     * @brief Main application window
+     *
+     * Manages the overall UI layout with:
+     * - Project tree (left panel)
+     * - Editor tabs (center)
+     * - PDF preview (right panel)
+     * - Build log (bottom dock)
+     * - Menu bar and toolbar
+     */
+    class MainWindow : public QMainWindow
+    {
+        Q_OBJECT
+
+    public:
+        explicit MainWindow(QWidget *parent = nullptr);
+        ~MainWindow() override;
+
+        // Non-copyable and non-movable
+        MainWindow(const MainWindow &) = delete;
+        MainWindow &operator=(const MainWindow &) = delete;
+        MainWindow(MainWindow &&) = delete;
+        MainWindow &operator=(MainWindow &&) = delete;
+
+    protected:
+        void closeEvent(QCloseEvent *event) override;
+
+    private slots:
+        // File menu
+        void onNewProject();
+        void onOpenProject();
+        void onSaveProject();
+        void onSaveProjectAs();
+        void onCloseProject();
+        void onQuit();
+
+        // Edit menu
+        void onUndo();
+        void onRedo();
+        void onFind();
+
+        // View menu
+        void onToggleProjectTree();
+        void onTogglePreview();
+        void onToggleLog();
+        void onEditorModeCode();
+        void onEditorModeWysiwyg();
+
+        // Build menu
+        void onConvertToLatex();
+        void onCompilePdf();
+        void onCompileAndPreview();
+        void onBuildSettings();
+
+        // Project model signals
+        void onProjectOpened(const QString &path);
+        void onProjectClosed();
+        void onProjectModified();
+
+        // Conversion engine signals
+        void onConversionStarted();
+        void onConversionProgress(const QString &message);
+        void onConversionCompleted(const QString &output);
+        void onConversionFailed(const QString &error);
+
+    private:
+        void setupUi();
+        void createActions();
+        void createMenus();
+        void createToolbar();
+        void createStatusBar();
+        void updateWindowTitle();
+        void updateActions();
+
+        bool maybeSave();
+
+        // Core components
+        ProjectModel *m_projectModel = nullptr;
+        ConversionEngine *m_conversionEngine = nullptr;
+
+        // UI components
+        ProjectTreeWidget *m_projectTree = nullptr;
+        QTabWidget *m_editorTabs = nullptr;
+        PreviewWidget *m_previewWidget = nullptr;
+        QDockWidget *m_logDock = nullptr;
+
+        // Layout
+        QSplitter *m_mainSplitter = nullptr;
+
+        // Actions - File menu
+        QAction *m_actionNewProject = nullptr;
+        QAction *m_actionOpenProject = nullptr;
+        QAction *m_actionSaveProject = nullptr;
+        QAction *m_actionSaveProjectAs = nullptr;
+        QAction *m_actionCloseProject = nullptr;
+        QAction *m_actionQuit = nullptr;
+
+        // Actions - Edit menu
+        QAction *m_actionUndo = nullptr;
+        QAction *m_actionRedo = nullptr;
+        QAction *m_actionFind = nullptr;
+
+        // Actions - View menu
+        QAction *m_actionToggleProjectTree = nullptr;
+        QAction *m_actionTogglePreview = nullptr;
+        QAction *m_actionToggleLog = nullptr;
+        QAction *m_actionEditorModeCode = nullptr;
+        QAction *m_actionEditorModeWysiwyg = nullptr;
+
+        // Actions - Build menu
+        QAction *m_actionConvertToLatex = nullptr;
+        QAction *m_actionCompilePdf = nullptr;
+        QAction *m_actionCompileAndPreview = nullptr;
+        QAction *m_actionBuildSettings = nullptr;
+    };
+
+} // namespace texloom
