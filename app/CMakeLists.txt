@@ -51,47 +51,39 @@ set(SOURCES
 set(HEADERS
 )
 
-# UI Component sources (will be added as we create them)
+# UI Component sources
 set(UI_SOURCES
-    # src/ui/MainWindow.cpp
-    # src/ui/EditorComponent.cpp
-    # src/ui/PreviewComponent.cpp
-    # src/ui/ProjectManagerComponent.cpp
+    src/ui/MainWindow.cpp
+    src/ui/EditorWidget.cpp
+    src/ui/PreviewWidget.cpp
+    src/ui/ProjectTreeWidget.cpp
 )
 
 set(UI_HEADERS
-    # src/ui/MainWindow.h
-    # src/ui/EditorComponent.h
-    # src/ui/PreviewComponent.h
-    # src/ui/ProjectManagerComponent.h
+    src/ui/MainWindow.h
+    src/ui/EditorWidget.h
+    src/ui/PreviewWidget.h
+    src/ui/ProjectTreeWidget.h
 )
 
-# Core sources (will be added as we create them)
+# Core sources
 set(CORE_SOURCES
-    # src/core/ProjectModel.cpp
-    # src/core/Document.cpp
-    # src/core/Project.cpp
-    # src/core/Template.cpp
+    src/core/ProjectModel.cpp
+    src/core/ConversionEngine.cpp
 )
 
 set(CORE_HEADERS
-    # src/core/ProjectModel.h
-    # src/core/Document.h
-    # src/core/Project.h
-    # src/core/Template.h
+    src/core/ProjectModel.h
+    src/core/ConversionEngine.h
 )
 
 # Service sources (will be added as we create them)
 set(SERVICE_SOURCES
-    # src/services/ConversionEngine.cpp
-    # src/services/PandocRunner.cpp
-    # src/services/LatexCompiler.cpp
+    # Future: Additional service classes
 )
 
 set(SERVICE_HEADERS
-    # src/services/ConversionEngine.h
-    # src/services/PandocRunner.h
-    # src/services/LatexCompiler.h
+    # Future: Additional service headers
 )
 
 # Utility sources (will be added as we create them)
