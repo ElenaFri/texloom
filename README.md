@@ -2,6 +2,16 @@
 
 A simple Markdown-to-LaTeX converter and text editor. With (useful) GUI.
 
+## Dependencies
+
+Install all required dependencies (Linux only):
+
+```bash
+./scripts/install-deps.sh
+```
+
+Or see [docs/dependencies.md](docs/dependencies.md) for manual installation.
+
 ## Build
 
 Compile the application with CMake:
