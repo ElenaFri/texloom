@@ -1,5 +1,7 @@
 # texloom
 
+![CI](https://github.com/USERNAME/texloom/workflows/CI/badge.svg)
+
 A simple Markdown-to-LaTeX converter and text editor. With (useful) GUI.
 
 ## Dependencies
