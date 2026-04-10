@@ -15,7 +15,19 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
+    - name: Detect changed files
+      uses: dorny/paths-filter@v3
+      id: changes
+      with:
+        filters: |
+          code:
+            - 'app/src/**'
+            - 'app/tests/**'
+            - 'app/CMakeLists.txt'
+            - '.github/workflows/ci.yml'
+    
     - name: Install dependencies
+      if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
       run: |
         sudo apt update
         sudo apt install -y \
@@ -29,6 +41,7 @@ jobs:
           xvfb
     
     - name: Cache CMake build
+      if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
       uses: actions/cache@v4
       with:
         path: app/build
@@ -37,6 +50,7 @@ jobs:
           ${{ runner.os }}-cmake-
     
     - name: Configure CMake
+      if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
       run: |
         cd app
         mkdir -p build
@@ -44,11 +58,13 @@ jobs:
         cmake ..
     
     - name: Build
+      if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
       run: |
         cd app/build
         cmake --build . --config Release
     
     - name: Run tests
+      if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
       run: |
         cd app/build
         xvfb-run -a --server-args="-screen 0 1024x768x24" ctest --output-on-failure
@@ -56,7 +72,7 @@ jobs:
         QT_QPA_PLATFORM: offscreen
     
     - name: Upload artifacts (main only)
-      if: success() && github.ref == 'refs/heads/main'
+      if: (steps.changes.outputs.code == 'true' || steps.changes.outputs.code == '') && success() && github.ref == 'refs/heads/main'
       uses: actions/upload-artifact@v4
       with:
         name: texloom-linux
