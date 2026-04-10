@@ -25,7 +25,8 @@ jobs:
           qt6-base-dev-tools \
           pandoc \
           texlive-xetex \
-          texlive-fonts-recommended
+          texlive-fonts-recommended \
+          xvfb
     
     - name: Configure CMake
       run: |
@@ -42,7 +43,9 @@ jobs:
     - name: Run tests
       run: |
         cd app/build
-        ctest --output-on-failure
+        xvfb-run -a --server-args="-screen 0 1024x768x24" ctest --output-on-failure
+      env:
+        QT_QPA_PLATFORM: offscreen
     
     - name: Upload artifacts (main only)
       if: success() && github.ref == 'refs/heads/main'
