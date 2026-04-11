@@ -41,7 +41,8 @@ jobs:
           pandoc \
           texlive-xetex \
           texlive-fonts-recommended \
-          xvfb
+          xvfb \
+          valgrind
     
     - name: Cache CMake build
       if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
