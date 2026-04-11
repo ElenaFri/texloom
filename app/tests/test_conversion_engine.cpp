@@ -256,6 +256,245 @@ private slots:
         }
     }
 
+    void testCompileToPdfWithXelatex()
+    {
+        // Check if xelatex is available
+        QProcess process;
+        process.start("xelatex", QStringList{"--version"});
+        if (!process.waitForFinished(3000) || process.exitCode() != 0)
+        {
+            QSKIP("XeLaTeX not installed, skipping PDF compilation test");
+        }
+
+        // Create a minimal LaTeX file
+        QString texFile = m_tempDir->path() + "/test.tex";
+        QFile file(texFile);
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+
+        QTextStream out(&file);
+        out << "\\documentclass{article}\n";
+        out << "\\begin{document}\n";
+        out << "Test PDF Document\n";
+        out << "\\end{document}\n";
+        file.close();
+
+        QString pdfFile = m_tempDir->path() + "/test.pdf";
+
+        QSignalSpy spyStarted(m_engine, &ConversionEngine::conversionStarted);
+        QSignalSpy spyCompleted(m_engine, &ConversionEngine::conversionCompleted);
+        QSignalSpy spyFailed(m_engine, &ConversionEngine::conversionFailed);
+        QSignalSpy spyPdfGen(m_engine, &ConversionEngine::pdfGenerated);
+
+        m_engine->compileToPdf(texFile, pdfFile);
+
+        QCOMPARE(spyStarted.count(), 1);
+        auto startArgs = spyStarted.takeFirst();
+        QCOMPARE(startArgs.at(0).value<ConversionEngine::Stage>(),
+                 ConversionEngine::Stage::CompilingToPdf);
+        QVERIFY(m_engine->isBusy());
+
+        // Wait for compilation (max 30 seconds - PDF compilation can be slow)
+        bool finished = spyCompleted.wait(30000) || spyFailed.wait(100);
+        QVERIFY2(finished, "PDF compilation timed out");
+
+        if (spyFailed.count() > 0)
+        {
+            qWarning() << "Compilation failed:" << spyFailed.takeFirst().at(0).toString();
+            QFAIL("XeLaTeX compilation failed");
+        }
+
+        QCOMPARE(spyCompleted.count(), 1);
+        QCOMPARE(spyPdfGen.count(), 1);
+        QVERIFY(!m_engine->isBusy());
+        QCOMPARE(m_engine->currentStage(), ConversionEngine::Stage::Idle);
+    }
+
+    void testConvertAllMarkdownToPdf()
+    {
+        if (!isPandocAvailable())
+        {
+            QSKIP("Pandoc not installed, skipping full pipeline test");
+        }
+
+        QProcess xelatexTest;
+        xelatexTest.start("xelatex", QStringList{"--version"});
+        if (!xelatexTest.waitForFinished(3000) || xelatexTest.exitCode() != 0)
+        {
+            QSKIP("XeLaTeX not installed, skipping full pipeline test");
+        }
+
+        QString mdFile = createTestMarkdownFile();
+        QVERIFY(!mdFile.isEmpty());
+
+        QString pdfFile = m_tempDir->path() + "/output.pdf";
+
+        QSignalSpy spyStarted(m_engine, &ConversionEngine::conversionStarted);
+        QSignalSpy spyProgress(m_engine, &ConversionEngine::conversionProgress);
+        QSignalSpy spyCompleted(m_engine, &ConversionEngine::conversionCompleted);
+        QSignalSpy spyFailed(m_engine, &ConversionEngine::conversionFailed);
+        QSignalSpy spyLatexGen(m_engine, &ConversionEngine::latexGenerated);
+        QSignalSpy spyPdfGen(m_engine, &ConversionEngine::pdfGenerated);
+
+        m_engine->convertAll(mdFile, pdfFile);
+
+        // Should start with Markdown→LaTeX stage
+        QVERIFY(m_engine->isBusy());
+
+        // Wait for full pipeline (max 60 seconds)
+        bool finished = false;
+        for (int i = 0; i < 60 && !finished; ++i)
+        {
+            finished = spyCompleted.count() > 0 || spyFailed.count() > 0;
+            if (!finished)
+                QTest::qWait(1000);
+        }
+
+        QVERIFY2(finished, "Full pipeline timed out");
+
+        if (spyFailed.count() > 0)
+        {
+            qWarning() << "Conversion failed:" << spyFailed.takeFirst().at(0).toString();
+            QFAIL("Full Markdown→PDF conversion failed");
+        }
+
+        // Verify pipeline completed successfully
+        QVERIFY2(spyStarted.count() >= 1, "No conversionStarted signals received");
+        QCOMPARE(spyCompleted.count(), 1);
+        QCOMPARE(spyLatexGen.count(), 1); // Intermediate LaTeX generated
+        QCOMPARE(spyPdfGen.count(), 1);
+        QVERIFY(spyProgress.count() > 0); // Should have progress messages
+        QVERIFY(!m_engine->isBusy());
+        QCOMPARE(m_engine->currentStage(), ConversionEngine::Stage::Idle);
+    }
+
+    void testConvertWithCustomTemplate()
+    {
+        if (!isPandocAvailable())
+        {
+            QSKIP("Pandoc not installed, skipping template test");
+        }
+
+        // Create a custom template
+        QString templateFile = m_tempDir->path() + "/custom.latex";
+        QFile tfile(templateFile);
+        QVERIFY(tfile.open(QIODevice::WriteOnly | QIODevice::Text));
+
+        QTextStream tout(&tfile);
+        tout << "\\documentclass{article}\n";
+        tout << "\\title{$title$}\n";
+        tout << "\\author{$author$}\n";
+        tout << "\\begin{document}\n";
+        tout << "\\maketitle\n";
+        tout << "$body$\n";
+        tout << "\\end{document}\n";
+        tfile.close();
+
+        m_engine->setTemplatePath(templateFile);
+
+        QString mdFile = createTestMarkdownFile();
+        QString latexFile = m_tempDir->path() + "/output_template.tex";
+
+        QSignalSpy spyCompleted(m_engine, &ConversionEngine::conversionCompleted);
+        QSignalSpy spyFailed(m_engine, &ConversionEngine::conversionFailed);
+
+        m_engine->convertToLatex(mdFile, latexFile);
+
+        bool finished = spyCompleted.wait(10000) || spyFailed.wait(100);
+        QVERIFY(finished);
+
+        if (spyFailed.count() > 0)
+        {
+            qWarning() << "Template conversion failed:" << spyFailed.takeFirst().at(0).toString();
+            QFAIL("Conversion with custom template failed");
+        }
+
+        QVERIFY(QFile::exists(latexFile));
+
+        // Verify template was used
+        QFile file(latexFile);
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QString content = QString::fromUtf8(file.readAll());
+        QVERIFY(content.contains("\\title{"));
+        QVERIFY(content.contains("\\author{"));
+    }
+
+    void testConvertWithCustomPandocOptions()
+    {
+        if (!isPandocAvailable())
+        {
+            QSKIP("Pandoc not installed, skipping custom options test");
+        }
+
+        // Set custom options with table of contents
+        QStringList customOptions = {
+            "--standalone",
+            "--toc",
+            "--toc-depth=2",
+            "--from", "markdown",
+            "--to", "latex"};
+        m_engine->setPandocOptions(customOptions);
+
+        QString mdFile = createTestMarkdownFile();
+        QString latexFile = m_tempDir->path() + "/output_toc.tex";
+
+        QSignalSpy spyCompleted(m_engine, &ConversionEngine::conversionCompleted);
+        QSignalSpy spyFailed(m_engine, &ConversionEngine::conversionFailed);
+
+        m_engine->convertToLatex(mdFile, latexFile);
+
+        bool finished = spyCompleted.wait(10000) || spyFailed.wait(100);
+        QVERIFY(finished);
+
+        if (spyFailed.count() > 0)
+        {
+            QFAIL("Conversion with custom options failed");
+        }
+
+        QVERIFY(QFile::exists(latexFile));
+
+        // Verify TOC was included (Pandoc should add \tableofcontents)
+        QFile file(latexFile);
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QString content = QString::fromUtf8(file.readAll());
+        QVERIFY(content.contains("tableofcontents") || content.contains("toc"));
+    }
+
+    void testInvalidLatexFile()
+    {
+        QProcess xelatexTest;
+        xelatexTest.start("xelatex", QStringList{"--version"});
+        if (!xelatexTest.waitForFinished(3000) || xelatexTest.exitCode() != 0)
+        {
+            QSKIP("XeLaTeX not installed, skipping invalid LaTeX test");
+        }
+
+        // Create a LaTeX file with syntax errors
+        QString texFile = m_tempDir->path() + "/invalid.tex";
+        QFile file(texFile);
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+
+        QTextStream out(&file);
+        out << "\\documentclass{article}\n";
+        out << "\\begin{document}\n";
+        out << "\\undefined_command\n"; // This will cause an error
+        out << "Missing end tag...\n";
+        // Intentionally missing \end{document}
+        file.close();
+
+        QString pdfFile = m_tempDir->path() + "/invalid.pdf";
+
+        QSignalSpy spyFailed(m_engine, &ConversionEngine::conversionFailed);
+        QSignalSpy spyCompleted(m_engine, &ConversionEngine::conversionCompleted);
+
+        m_engine->compileToPdf(texFile, pdfFile);
+
+        // Should fail
+        bool hasFailed = spyFailed.wait(30000);
+        QVERIFY2(hasFailed, "Expected compilation to fail for invalid LaTeX");
+        QCOMPARE(spyCompleted.count(), 0); // Should not complete successfully
+        QVERIFY(!m_engine->isBusy());
+    }
+
     void testPandocNotInstalled()
     {
         // This test verifies graceful handling when Pandoc is missing
