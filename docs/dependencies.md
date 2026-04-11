@@ -27,6 +27,8 @@ These are required to compile TexLoom from source.
 - **Qt Test** — Unit testing framework (included with Qt)
 - **Git** — Version control
 - **xvfb** — Virtual framebuffer for headless testing (Linux)
+- **Valgrind** — Memory leak detector (Linux only)
+  - Used with: `ctest -T memcheck`
 
 ## Runtime Dependencies
 
@@ -55,8 +57,8 @@ sudo apt install qt6-base-dev qt6-base-dev-tools
 # Runtime dependencies
 sudo apt install pandoc texlive-xetex texlive-fonts-recommended
 
-# Optional: for headless testing
-sudo apt install xvfb
+# Optional: for headless testing and memory checks
+sudo apt install xvfb valgrind
 ```
 
 ### Fedora/RHEL
@@ -69,8 +71,8 @@ sudo dnf install qt6-qtbase-devel
 # Runtime dependencies
 sudo dnf install pandoc texlive-xetex texlive-collection-fontsrecommended
 
-# Optional: for headless testing
-sudo dnf install xorg-x11-server-Xvfb
+# Optional: for headless testing and memory checks
+sudo dnf install xorg-x11-server-Xvfb valgrind
 ```
 
 ### Arch Linux
@@ -82,8 +84,8 @@ sudo pacman -S base-devel cmake git qt6-base
 # Runtime dependencies
 sudo pacman -S pandoc texlive-xetex texlive-fontsrecommended
 
-# Optional: for headless testing
-sudo pacman -S xorg-server-xvfb
+# Optional: for headless testing and memory checks
+sudo pacman -S xorg-server-xvfb valgrind
 ```
 
 ### macOS (Homebrew)

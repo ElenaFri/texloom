@@ -291,6 +291,44 @@ Check GitHub Actions logs:
 3. Expand "Run tests" step
 4. Look for `FAIL!` messages with assertions
 
+### Memory Leak Detection (Valgrind)
+
+**Integrated with CTest** - Run memory checks locally:
+
+```bash
+cd app/build
+
+# Run all tests with valgrind (slow but thorough)
+ctest -T memcheck
+
+# View results
+cat Testing/Temporary/MemoryChecker.*.log
+```
+
+**Manual valgrind** for specific tests:
+
+```bash
+# Single test with full leak check
+valgrind --leak-check=full --show-leak-kinds=definite,possible \
+    ./bin/test_project_model
+
+# All tests with valgrind
+for test in ./bin/test_*; do
+    echo "Running $test with valgrind..."
+    valgrind --leak-check=full --show-leak-kinds=definite \
+        --error-exitcode=1 "$test"
+done
+```
+
+**Expected results**:
+
+- `definitely lost: 0 bytes` ✅
+- `indirectly lost: 0 bytes` ✅
+- `possibly lost`: Small amounts in glib/Qt are acceptable
+- `still reachable`: Qt caches (normal, not a leak)
+
+**Note**: Qt/GTK plugins may show "Invalid read" warnings - these are false positives from theme engines, not our code. Valgrind is NOT run in CI (too slow), only regular tests are automated.
+
 ## Success Criteria
 
 ✅ **All tests pass** on Linux (Ubuntu/Debian)  

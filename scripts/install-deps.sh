@@ -36,7 +36,8 @@ case $DISTRO in
             pandoc \
             texlive-xetex \
             texlive-fonts-recommended \
-            xvfb
+            xvfb \
+            valgrind
         ;;
     
     fedora|rhel|centos)
@@ -49,7 +50,8 @@ case $DISTRO in
             pandoc \
             texlive-xetex \
             texlive-collection-fontsrecommended \
-            xorg-x11-server-Xvfb
+            xorg-x11-server-Xvfb \
+            valgrind
         ;;
     
     arch|manjaro)
@@ -62,7 +64,8 @@ case $DISTRO in
             pandoc \
             texlive-xetex \
             texlive-fontsrecommended \
-            xorg-server-xvfb
+            xorg-server-xvfb \
+            valgrind
         ;;
     
     *)

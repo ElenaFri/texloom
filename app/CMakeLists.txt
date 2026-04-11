@@ -6,6 +6,9 @@ project(TexLoom
     LANGUAGES CXX
 )
 
+# Enable testing with CTest (must be at project root)
+include(CTest)
+
 # C++ Standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -102,14 +105,43 @@ set(UTIL_HEADERS
 #     resources/resources.qrc
 # )
 
+# Create core library (for testing)
+add_library(texloom_core STATIC
+    ${CORE_SOURCES}
+    ${CORE_HEADERS}
+)
+
+target_include_directories(texloom_core PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+)
+
+target_link_libraries(texloom_core PUBLIC
+    Qt6::Core
+)
+
+# Create ui library (for testing)
+add_library(texloom_ui STATIC
+    ${UI_SOURCES}
+    ${UI_HEADERS}
+)
+
+target_include_directories(texloom_ui PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+)
+
+target_link_libraries(texloom_ui PUBLIC
+    texloom_core
+    Qt6::Core
+    Qt6::Widgets
+)
+
 # Create executable
 add_executable(texloom
     ${SOURCES}
     ${HEADERS}
-    ${UI_SOURCES}
-    ${UI_HEADERS}
-    ${CORE_SOURCES}
-    ${CORE_HEADERS}
     ${SERVICE_SOURCES}
     ${SERVICE_HEADERS}
     ${UTIL_SOURCES}
@@ -126,8 +158,10 @@ target_include_directories(texloom PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/utils
 )
 
-# Link Qt libraries
+# Link libraries
 target_link_libraries(texloom PRIVATE
+    texloom_core
+    texloom_ui
     Qt6::Core
     Qt6::Widgets
     Qt6::Concurrent
