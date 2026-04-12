@@ -44,13 +44,6 @@ jobs:
     
     # ========== CACHING ==========
     
-    - name: Cache apt packages
-      if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
-      uses: awalsh128/cache-apt-pkgs-action@v1
-      with:
-        packages: build-essential cmake qt6-base-dev qt6-base-dev-tools xvfb valgrind lcov
-        version: 1.0
-    
     - name: Cache ccache
       if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
       uses: actions/cache@v4
@@ -76,8 +69,15 @@ jobs:
       if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
       run: |
         sudo apt update -qq
-        # Dépendances de base (déjà en cache via cache-apt-pkgs-action)
-        echo "Base dependencies cached"
+        sudo apt install -y --no-install-recommends \
+          build-essential \
+          cmake \
+          qt6-base-dev \
+          qt6-base-dev-tools \
+          xvfb \
+          valgrind \
+          lcov \
+          ccache
     
     - name: Install conversion tools (coverage job only)
       if: (steps.changes.outputs.code == 'true' || steps.changes.outputs.code == '') && matrix.install_converters
@@ -91,7 +91,6 @@ jobs:
     - name: Setup ccache
       if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
       run: |
-        sudo apt install -y ccache
         echo "/usr/lib/ccache" >> $GITHUB_PATH
         ccache --max-size=500M
         ccache --zero-stats
