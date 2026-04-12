@@ -86,6 +86,8 @@ jobs:
         sudo apt install -y --no-install-recommends \
           pandoc \
           texlive-xetex \
+          texlive-latex-base \
+          texlive-latex-recommended \
           texlive-fonts-recommended
     
     - name: Setup ccache

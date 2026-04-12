@@ -198,9 +198,18 @@ namespace texloom
         if (status != QProcess::NormalExit || exitCode != 0)
         {
             QString error = m_xelatexProcess->readAllStandardError();
+            QString output = m_xelatexProcess->readAllStandardOutput();
             m_stage = Stage::Idle;
             m_pendingPdfOutput.clear();
-            emit conversionFailed("XeLaTeX failed: " + error);
+
+            // XeLaTeX often writes errors to stdout, not stderr
+            QString fullError = error;
+            if (!output.isEmpty())
+            {
+                fullError += (fullError.isEmpty() ? "" : "\n") + output;
+            }
+
+            emit conversionFailed("XeLaTeX failed: " + fullError);
             cleanupTempFiles();
             return;
         }

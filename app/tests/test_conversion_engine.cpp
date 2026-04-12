@@ -353,8 +353,14 @@ private slots:
 
         if (spyFailed.count() > 0)
         {
-            qWarning() << "Conversion failed:" << spyFailed.takeFirst().at(0).toString();
-            QFAIL("Full Markdown→PDF conversion failed");
+            QString errorMsg = spyFailed.takeFirst().at(0).toString();
+            qWarning() << "Conversion failed:" << errorMsg;
+            // Print all progress messages for debugging
+            for (int i = 0; i < spyProgress.count(); ++i)
+            {
+                qWarning() << "Progress:" << spyProgress.at(i).at(0).toString();
+            }
+            QFAIL(qPrintable("Full Markdown→PDF conversion failed: " + errorMsg));
         }
 
         // Verify pipeline completed successfully
