@@ -18,11 +18,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Build rapide sans outils lourds (Pandoc/XeLaTeX)
+          # Fast build without heavy tools (Pandoc/XeLaTeX)
           - build_type: Release
             coverage: false
             install_converters: false
-          # Build avec coverage et tous les outils
+          # Full build with coverage and all tools
           - build_type: Debug  
             coverage: true
             install_converters: true
@@ -82,7 +82,7 @@ jobs:
     - name: Install conversion tools (coverage job only)
       if: (steps.changes.outputs.code == 'true' || steps.changes.outputs.code == '') && matrix.install_converters
       run: |
-        # Outils lourds uniquement pour le job avec coverage
+        # Heavy tools only for coverage job
         # Note: Installing tex packages without --no-install-recommends
         # to ensure all TeX infrastructure is properly set up
         sudo apt install -y --no-install-recommends pandoc
@@ -148,9 +148,13 @@ jobs:
       if: (steps.changes.outputs.code == 'true' || steps.changes.outputs.code == '') && matrix.coverage
       run: |
         cd app/build
+        # lcov may return exit 25 for warnings (unused patterns, no branch data)
+        # Continue anyway as coverage.info is properly generated
         lcov --capture --directory . --output-file coverage.info || true
         lcov --remove coverage.info '/usr/*' '*/tests/*' '*/build/*' '*autogen*' --output-file coverage.info || true
         lcov --list coverage.info || true
+        # Verify coverage.info was created before upload
+        test -f coverage.info && echo "✓ coverage.info generated" || echo "✗ coverage.info missing"
     
     - name: Upload to Codecov
       if: (steps.changes.outputs.code == 'true' || steps.changes.outputs.code == '') && matrix.coverage
@@ -160,8 +164,6 @@ jobs:
         file: app/build/coverage.info
         fail_ci_if_error: false
         verbose: true
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     
     # ========== ARTIFACTS ==========
     

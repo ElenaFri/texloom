@@ -1,131 +1,131 @@
-# Optimisations du Pipeline CI/CD
+# CI/CD Pipeline Optimizations
 
-## 📊 Comparaison Avant/Après
+## 📊 Before/After Comparison
 
 ### Architecture
 
-**Avant** : 2 jobs séparés
+**Before**: 2 separate jobs
 
-- `build-linux` : Build Release + Tests
-- `coverage` : Build Debug + Tests + Coverage
+- `build-linux`: Release Build + Tests
+- `coverage`: Debug Build + Tests + Coverage
 
-**Après** : 1 job matriciel
+**After**: 1 matrix job
 
-- `test[Release]` : Build Release + Tests + Valgrind
-- `test[Debug]` : Build Debug + Tests + Coverage
+- `test[Release]`: Release Build + Tests + Valgrind
+- `test[Debug]`: Debug Build + Tests + Coverage
 
-## 🚀 Optimisations Appliquées
+## 🚀 Applied Optimizations
 
-### 1. **Matrice de Build** (-30% temps)
+### 1. **Build Matrix** (-30% time)
 
-- Un seul job avec 2 variantes (Release/Debug)
-- Partage du code de définition
-- Exécution parallèle conservée
+- Single job with 2 variants (Release/Debug)
+- Shared definition code
+- Parallel execution preserved
 
-### 2. **Cache Intelligent** (-40% temps installation)
+### 2. **Intelligent Caching** (-40% installation time)
 
-#### Cache APT
+#### APT Cache
 
 ```yaml
 uses: awalsh128/cache-apt-pkgs-action@v1
 ```
 
-- Met en cache les paquets apt téléchargés
-- Économise 30-60s par build sur les dépendances de base
+- Caches downloaded apt packages
+- Saves 30-60s per build on base dependencies
 
-#### Cache ccache
+#### ccache Cache
 
 ```yaml
 key: ${{ runner.os }}-ccache-${{ matrix.build_type }}-${{ hashFiles('app/src/**') }}
 ```
 
-- Cache les fichiers objets compilés
-- Recompile uniquement les fichiers modifiés
-- Économie : 50-80% du temps de compilation sur builds incrémentaux
+- Caches compiled object files
+- Recompiles only modified files
+- Savings: 50-80% compilation time on incremental builds
 
-#### Cache CMake
+#### CMake Cache
 
-- Cache `app/build/` pour réutiliser la configuration
-- Évite de reconfigurer à chaque fois
+- Caches `app/build/` to reuse configuration
+- Avoids reconfiguring every time
 
-### 3. **Installation Conditionnelle** (-120s sur Release)
+### 3. **Conditional Installation** (-120s on Release)
 
 ```yaml
-# Release : Skip Pandoc + XeLaTeX (tests les détectent et skip)
+# Release: Skip Pandoc + XeLaTeX (tests detect and skip)
 install_converters: false
 
-# Debug : Installation complète pour coverage
+# Debug: Full installation for coverage
 install_converters: true
 ```
 
-**Gain** :
+**Gain**:
 
-- Pandoc : ~300 MB, 30s
-- texlive-xetex : ~500 MB, 90s
-- Total sur Release : **-120s d'installation**
+- Pandoc: ~300 MB, 30s
+- texlive-xetex: ~500 MB, 90s
+- Total on Release: **-120s installation**
 
-Les tests `test_conversion_engine.cpp` utilisent `QSKIP()` si Pandoc/XeLaTeX absents, donc :
+Tests in `test_conversion_engine.cpp` use `QSKIP()` if Pandoc/XeLaTeX are absent, so:
 
-- ✅ Release : Tests unitaires purs (rapides)
-- ✅ Debug : Tests d'intégration complets (avec outils)
+- ✅ Release: Pure unit tests (fast)
+- ✅ Debug: Full integration tests (with tools)
 
-### 4. **Compilation Parallèle** (-30% temps build)
+### 4. **Parallel Compilation** (-30% build time)
 
 ```yaml
 cmake --build . -j$(nproc)
 ```
 
-Avant : Single-threaded  
-Après : Utilise tous les CPU (2-4 sur GitHub Actions)
+Before: Single-threaded  
+After: Uses all CPUs (2-4 on GitHub Actions)
 
-### 5. **Optimisations Mineures**
+### 5. **Minor Optimizations**
 
-- `sudo apt update -qq` : Mode silencieux
-- `--no-install-recommends` : Skip paquets suggérés
-- `ccache --max-size=500M` : Limite taille cache
-- `fail-fast: false` : Continue même si un job échoue
+- `sudo apt update -qq`: Quiet mode
+- `--no-install-recommends`: Skip suggested packages
+- `ccache --max-size=500M`: Limit cache size
+- `fail-fast: false`: Continue even if one job fails
 
-## 📈 Gains de Performance Estimés
+## 📈 Estimated Performance Gains
 
-| Scénario | Avant | Après | Gain |
+| Scenario | Before | After | Gain |
 |----------|-------|-------|------|
-| **Premier build (cache vide)** | 8-10 min | 6-7 min | **~30%** |
-| **Build incrémental (1 fichier modifié)** | 5-6 min | 2-3 min | **~50%** |
-| **Aucun fichier changé (docs seulement)** | ~10s | ~10s | 0% |
+| **First build (empty cache)** | 8-10 min | 6-7 min | **~30%** |
+| **Incremental build (1 file modified)** | 5-6 min | 2-3 min | **~50%** |
+| **No file changed (docs only)** | ~10s | ~10s | 0% |
 
-### Détail du temps (premier build)
+### Build time breakdown (first build)
 
-**Avant (2 jobs)** :
+**Before (2 jobs)**:
 
 ```
 build-linux:   4-5 min
 coverage:      4-5 min
-Total:         8-10 min (parallèle)
+Total:         8-10 min (parallel)
 ```
 
-**Après (matrice)** :
+**After (matrix)**:
 
 ```
-test[Release]:  2.5-3 min  (sans Pandoc/XeLaTeX, avec ccache)
-test[Debug]:    3.5-4 min  (avec coverage, tous outils)
-Total:          3.5-4 min  (parallèle, le plus long des deux)
+test[Release]:  2.5-3 min  (no Pandoc/XeLaTeX, with ccache)
+test[Debug]:    3.5-4 min  (with coverage, all tools)
+Total:          3.5-4 min  (parallel, longest of the two)
 ```
 
-## ✅ Fonctionnalités Préservées
+## ✅ Preserved Features
 
-Rien n'est perdu :
+Nothing is lost:
 
-- ✅ Tests unitaires complets (Release + Debug)
-- ✅ Code coverage avec Codecov (Debug)
+- ✅ Complete unit tests (Release + Debug)
+- ✅ Code coverage with Codecov (Debug)
 - ✅ Valgrind memory checks (Release)
-- ✅ Build artifacts (Release sur main)
-- ✅ Détection changements fichiers (paths-filter)
-- ✅ Build Release optimisé
-- ✅ Tests d'intégration Pandoc/XeLaTeX (Debug)
+- ✅ Build artifacts (Release on main)
+- ✅ File change detection (paths-filter)
+- ✅ Optimized Release build
+- ✅ Pandoc/XeLaTeX integration tests (Debug)
 
 ## 🔄 Migration
 
-### Option 1 : Remplacement direct
+### Option 1: Direct replacement
 
 ```bash
 mv .github/workflows/ci.yml .github/workflows/ci-old.yml
@@ -134,49 +134,49 @@ git add .github/workflows/
 git commit -m "ci: Optimize pipeline with matrix strategy and caching"
 ```
 
-### Option 2 : Test en parallèle
+### Option 2: Parallel testing
 
-Garder les deux workflows temporairement :
+Keep both workflows temporarily:
 
-- `ci.yml` : Pipeline actuel (backup)
-- `ci-optimized.yml` : Nouveau pipeline (test)
+- `ci.yml`: Current pipeline (backup)
+- `ci-optimized.yml`: New pipeline (test)
 
-Après validation (1-2 semaines), supprimer l'ancien.
+After validation (1-2 weeks), delete the old one.
 
-## 📝 Notes Techniques
+## 📝 Technical Notes
 
-### Pourquoi ccache ?
+### Why ccache?
 
-- Garde les `.o` compilés en cache
-- Recompile uniquement si le source OU les headers changent
-- Détection via hash du préprocesseur
-- Gain massif sur builds incrémentaux
+- Keeps compiled `.o` files in cache
+- Recompiles only if source OR headers change
+- Detection via preprocessor hash
+- Massive gain on incremental builds
 
-### Pourquoi matrice au lieu de 2 jobs ?
+### Why matrix instead of 2 jobs?
 
-- Moins de duplication (DRY)
-- Maintenance simplifiée (1 workflow au lieu de 2)
-- Partage automatique des étapes communes
-- Ajout facile de nouvelles variantes (macOS, Windows, ...)
+- Less duplication (DRY)
+- Simplified maintenance (1 workflow instead of 2)
+- Automatic sharing of common steps
+- Easy addition of new variants (macOS, Windows, ...)
 
-### Pourquoi split Pandoc/XeLaTeX ?
+### Why split Pandoc/XeLaTeX?
 
-- 800 MB de dépendances pour 2-3 tests d'intégration
-- Les tests unitaires n'en ont pas besoin
-- Les tests skip automatiquement si non disponibles
-- Job Release reste ultra rapide pour feedback rapide
-- Job Debug garde la couverture complète
+- 800 MB dependencies for 2-3 integration tests
+- Unit tests don't need them
+- Tests automatically skip if not available
+- Release job stays ultra-fast for quick feedback
+- Debug job keeps full coverage
 
-## 🎯 Recommandations
+## 🎯 Recommendations
 
-1. **Activer l'optimisation immédiatement** : Gains substantiels, risque minimal
-2. **Monitorer les premiers builds** : Vérifier que ccache fonctionne bien
-3. **Ajuster cache ccache** : Si trop de misses, augmenter `--max-size`
-4. **Future optimisation** : Ajouter Windows/macOS dans la matrice
+1. **Enable optimization immediately**: Substantial gains, minimal risk
+2. **Monitor first builds**: Verify ccache works well
+3. **Adjust ccache**: If too many misses, increase `--max-size`
+4. **Future optimization**: Add Windows/macOS to matrix
 
-## 🔍 Vérification
+## 🔍 Verification
 
-Après migration, vérifier :
+After migration, check:
 
 ```bash
 # Check workflow syntax
@@ -189,10 +189,10 @@ gh workflow run ci
 gh run watch
 ```
 
-Indicateurs de succès :
+Success indicators:
 
-- ✅ `ccache --show-stats` montre >50% hit rate après 2-3 builds
-- ✅ Temps total < 5 min (au lieu de 8-10)
-- ✅ Tous les tests passent
-- ✅ Coverage uploadé sur Codecov
-- ✅ Artifact généré sur main
+- ✅ `ccache --show-stats` shows >50% hit rate after 2-3 builds
+- ✅ Total time < 5 min (instead of 8-10)
+- ✅ All tests pass
+- ✅ Coverage uploaded to Codecov
+- ✅ Artifact generated on main
