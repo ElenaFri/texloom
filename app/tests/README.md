@@ -57,7 +57,7 @@ Tests **ProjectModel** (project management, JSON serialization)
 
 ---
 
-#### `test_conversion_engine.cpp` (9 tests)
+#### `test_conversion_engine.cpp` (15 tests)
 
 Tests **ConversionEngine** (Markdown → LaTeX → PDF pipeline)
 
@@ -65,20 +65,28 @@ Tests **ConversionEngine** (Markdown → LaTeX → PDF pipeline)
 
 - Initial state (Idle, not busy)
 - Set Pandoc/XeLaTeX options
+- Set custom template path
 - Convert Markdown to LaTeX (requires Pandoc)
+- Compile LaTeX to PDF (requires XeLaTeX)
+- Full pipeline: Markdown → PDF (requires both)
 - Sequential conversions
 - Busy state detection
+- Custom Pandoc options (TOC, etc.)
+- Custom template usage
 
 **Failure scenarios** (❌):
 
 - Convert non-existent file
 - Convert with invalid output path
-- Handle Pandoc errors
+- Compile invalid LaTeX file
+- Handle Pandoc/XeLaTeX errors
 
 **Integration** (🔗):
 
 - Actual Pandoc invocation (skipped if not installed)
-- Verify generated LaTeX content
+- Actual XeLaTeX compilation (skipped if not installed)
+- Verify generated LaTeX/PDF content
+- Test full two-stage pipeline
 
 **Signals tested**:
 
@@ -161,20 +169,47 @@ ctest --verbose
 xvfb-run -a ctest --output-on-failure
 ```
 
+### Code Coverage
+
+Generate code coverage report locally:
+
+```bash
+# Configure with coverage enabled
+cd app
+mkdir -p build-coverage && cd build-coverage
+cmake -DENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug ..
+
+# Build and run tests
+cmake --build .
+ctest --output-on-failure
+
+# Generate coverage report
+lcov --capture --directory . --output-file coverage.info
+lcov --remove coverage.info '/usr/*' '*/tests/*' '*/build/*' --output-file coverage.info
+lcov --list coverage.info
+
+# Generate HTML report (optional)
+genhtml coverage.info --output-directory coverage_report
+# Then open: firefox coverage_report/index.html
+```
+
+**Note**: Coverage is automatically generated and uploaded to [Codecov](https://codecov.io/gh/ElenaFri/texloom) on each CI run. See the badge in README for current coverage percentage.
+
 ## Test Coverage
 
 ### Current Coverage (Phase 0)
 
 | Component | Tests | Coverage |
 |-----------|-------|----------|
-| ProjectModel | 12 | ✅ High |
-| ConversionEngine | 9 | ✅ High |
-| EditorWidget | 11 | ✅ High |
+| ProjectModel | 12 | ✅ 97.6% |
+| ConversionEngine | 15 | ✅ 81.9% |
+| EditorWidget | 11 | ✅ 100% |
 | PreviewWidget | 0 | ❌ None |
 | ProjectTreeWidget | 0 | ❌ None |
 | MainWindow | 0 | ❌ None |
 
-**Total**: 32 tests (3 suites)
+**Total**: 38 tests (3 suites)  
+**Overall Project Coverage**: 42.7% (288/675 lines)
 
 ### TODO: Phase 1 Tests
 
@@ -334,7 +369,7 @@ done
 ✅ **All tests pass** on Linux (Ubuntu/Debian)  
 ✅ **No Qt widgets leak** (valgrind clean)  
 ✅ **Tests complete in < 30 seconds** (without Pandoc integration tests)  
-✅ **Code coverage > 80%** for core components (future: lcov integration)
+✅ **Code coverage tracked** with Codecov (target: > 80% for core components)
 
 ## References
 

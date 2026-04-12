@@ -7,12 +7,25 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  build-linux:
-    name: Build on Ubuntu
+  test:
+    name: Build & Test (${{ matrix.build_type }})
     runs-on: ubuntu-24.04
     permissions:
       contents: read
       pull-requests: read
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Build rapide sans outils lourds (Pandoc/XeLaTeX)
+          - build_type: Release
+            coverage: false
+            install_converters: false
+          # Build avec coverage et tous les outils
+          - build_type: Debug  
+            coverage: true
+            install_converters: true
     
     steps:
     - name: Checkout code
@@ -29,29 +42,65 @@ jobs:
             - 'app/CMakeLists.txt'
             - '.github/workflows/ci.yml'
     
-    - name: Install dependencies
+    # ========== CACHING ==========
+    
+    - name: Cache ccache
       if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
-      run: |
-        sudo apt update
-        sudo apt install -y \
-          build-essential \
-          cmake \
-          qt6-base-dev \
-          qt6-base-dev-tools \
-          pandoc \
-          texlive-xetex \
-          texlive-fonts-recommended \
-          xvfb \
-          valgrind
+      uses: actions/cache@v4
+      with:
+        path: ~/.ccache
+        key: ${{ runner.os }}-ccache-${{ matrix.build_type }}-${{ hashFiles('app/src/**') }}
+        restore-keys: |
+          ${{ runner.os }}-ccache-${{ matrix.build_type }}-
+          ${{ runner.os }}-ccache-
     
     - name: Cache CMake build
       if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
       uses: actions/cache@v4
       with:
         path: app/build
-        key: ${{ runner.os }}-cmake-${{ hashFiles('app/CMakeLists.txt', 'app/src/**', 'app/tests/**') }}
+        key: ${{ runner.os }}-cmake-${{ matrix.build_type }}-${{ hashFiles('app/CMakeLists.txt', 'app/src/**', 'app/tests/**') }}
         restore-keys: |
-          ${{ runner.os }}-cmake-
+          ${{ runner.os }}-cmake-${{ matrix.build_type }}-
+    
+    # ========== DEPENDENCIES ==========
+    
+    - name: Install base dependencies
+      if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
+      run: |
+        sudo apt update -qq
+        sudo apt install -y --no-install-recommends \
+          build-essential \
+          cmake \
+          qt6-base-dev \
+          qt6-base-dev-tools \
+          xvfb \
+          valgrind \
+          lcov \
+          ccache
+    
+    - name: Install conversion tools (coverage job only)
+      if: (steps.changes.outputs.code == 'true' || steps.changes.outputs.code == '') && matrix.install_converters
+      run: |
+        # Outils lourds uniquement pour le job avec coverage
+        # Note: Installing tex packages without --no-install-recommends
+        # to ensure all TeX infrastructure is properly set up
+        sudo apt install -y --no-install-recommends pandoc
+        sudo apt install -y \
+          texlive-xetex \
+          texlive-latex-base \
+          texlive-latex-recommended \
+          texlive-fonts-recommended \
+          lmodern
+    
+    - name: Setup ccache
+      if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
+      run: |
+        echo "/usr/lib/ccache" >> $GITHUB_PATH
+        ccache --max-size=500M
+        ccache --zero-stats
+    
+    # ========== BUILD ==========
     
     - name: Configure CMake
       if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
@@ -59,13 +108,24 @@ jobs:
         cd app
         mkdir -p build
         cd build
-        cmake ..
+        cmake \
+          ${{ matrix.coverage && '-DENABLE_COVERAGE=ON' || '' }} \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          ..
     
     - name: Build
       if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
       run: |
         cd app/build
-        cmake --build . --config Release
+        cmake --build . -j$(nproc)
+    
+    - name: Show ccache stats
+      if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
+      run: ccache --show-stats
+    
+    # ========== TESTING ==========
     
     - name: Run tests
       if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
@@ -75,8 +135,38 @@ jobs:
       env:
         QT_QPA_PLATFORM: offscreen
     
-    - name: Upload artifacts (main only)
-      if: (steps.changes.outputs.code == 'true' || steps.changes.outputs.code == '') && success() && github.ref == 'refs/heads/main'
+    - name: Memory check with Valgrind (Release only)
+      if: (steps.changes.outputs.code == 'true' || steps.changes.outputs.code == '') && !matrix.coverage
+      run: |
+        cd app/build
+        ctest -T memcheck --output-on-failure || true
+      continue-on-error: true
+    
+    # ========== COVERAGE ==========
+    
+    - name: Generate coverage report
+      if: (steps.changes.outputs.code == 'true' || steps.changes.outputs.code == '') && matrix.coverage
+      run: |
+        cd app/build
+        lcov --capture --directory . --output-file coverage.info || true
+        lcov --remove coverage.info '/usr/*' '*/tests/*' '*/build/*' '*autogen*' --output-file coverage.info || true
+        lcov --list coverage.info || true
+    
+    - name: Upload to Codecov
+      if: (steps.changes.outputs.code == 'true' || steps.changes.outputs.code == '') && matrix.coverage
+      uses: codecov/codecov-action@v4
+      continue-on-error: true
+      with:
+        file: app/build/coverage.info
+        fail_ci_if_error: false
+        verbose: true
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    
+    # ========== ARTIFACTS ==========
+    
+    - name: Upload binary (Release on main only)
+      if: (steps.changes.outputs.code == 'true' || steps.changes.outputs.code == '') && !matrix.coverage && success() && github.ref == 'refs/heads/main'
       uses: actions/upload-artifact@v4
       with:
         name: texloom-linux

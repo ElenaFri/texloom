@@ -1,6 +1,7 @@
 #include "ConversionEngine.h"
 #include <QFileInfo>
 #include <QDir>
+#include <QFile>
 #include <QDebug>
 
 namespace texloom
@@ -191,16 +192,21 @@ namespace texloom
 
     void ConversionEngine::onXelatexFinished(int exitCode, QProcess::ExitStatus status)
     {
-        QString pdfOutput = m_pendingPdfOutput.isEmpty()
-                                ? m_xelatexProcess->arguments().last()
-                                : m_pendingPdfOutput;
-
         if (status != QProcess::NormalExit || exitCode != 0)
         {
             QString error = m_xelatexProcess->readAllStandardError();
+            QString output = m_xelatexProcess->readAllStandardOutput();
             m_stage = Stage::Idle;
             m_pendingPdfOutput.clear();
-            emit conversionFailed("XeLaTeX failed: " + error);
+
+            // XeLaTeX often writes errors to stdout, not stderr
+            QString fullError = error;
+            if (!output.isEmpty())
+            {
+                fullError += (fullError.isEmpty() ? "" : "\n") + output;
+            }
+
+            emit conversionFailed("XeLaTeX failed: " + fullError);
             cleanupTempFiles();
             return;
         }
@@ -208,11 +214,64 @@ namespace texloom
         QString output = m_xelatexProcess->readAllStandardOutput();
         emit conversionProgress(output);
 
+        // XeLaTeX generates a PDF with the same basename as the .tex file
+        // We need to find it and potentially rename it to the desired output
+        QString texFile = m_xelatexProcess->arguments().last();
+        QFileInfo texInfo(texFile);
+
+        // Find the -output-directory argument
+        QStringList args = m_xelatexProcess->arguments();
+        QString outputDir = m_xelatexProcess->workingDirectory(); // default
+        int outDirIdx = args.indexOf("-output-directory");
+        if (outDirIdx != -1 && outDirIdx + 1 < args.size())
+        {
+            outputDir = args.at(outDirIdx + 1);
+        }
+
+        QString generatedPdf = outputDir + "/" + texInfo.completeBaseName() + ".pdf";
+
+        QString finalPdfPath;
+        if (!m_pendingPdfOutput.isEmpty())
+        {
+            finalPdfPath = m_pendingPdfOutput;
+
+            // If the generated PDF is not where we want it, move it
+            if (QFileInfo(generatedPdf).absoluteFilePath() != QFileInfo(finalPdfPath).absoluteFilePath())
+            {
+                QFile generatedFile(generatedPdf);
+                if (!generatedFile.exists())
+                {
+                    m_stage = Stage::Idle;
+                    m_pendingPdfOutput.clear();
+                    emit conversionFailed("XeLaTeX did not generate expected PDF: " + generatedPdf);
+                    cleanupTempFiles();
+                    return;
+                }
+
+                // Remove target if exists
+                QFile::remove(finalPdfPath);
+
+                if (!generatedFile.rename(finalPdfPath))
+                {
+                    m_stage = Stage::Idle;
+                    m_pendingPdfOutput.clear();
+                    emit conversionFailed("Failed to move PDF from " + generatedPdf + " to " + finalPdfPath);
+                    cleanupTempFiles();
+                    return;
+                }
+            }
+        }
+        else
+        {
+            // Direct compilation, PDF is where XeLaTeX put it
+            finalPdfPath = generatedPdf;
+        }
+
         m_stage = Stage::Idle;
         m_pendingPdfOutput.clear();
 
-        emit pdfGenerated(pdfOutput);
-        emit conversionCompleted(pdfOutput);
+        emit pdfGenerated(finalPdfPath);
+        emit conversionCompleted(finalPdfPath);
 
         cleanupTempFiles();
     }
