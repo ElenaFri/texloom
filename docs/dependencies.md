@@ -57,7 +57,7 @@ sudo apt install build-essential cmake git
 sudo apt install qt6-base-dev qt6-base-dev-tools
 
 # Runtime dependencies
-sudo apt install pandoc texlive-xetex texlive-fonts-recommended
+sudo apt install pandoc texlive-xetex texlive-latex-base texlive-latex-recommended texlive-fonts-recommended lmodern
 
 # Optional: for headless testing, memory checks, and code coverage
 sudo apt install xvfb valgrind lcov
@@ -71,7 +71,7 @@ sudo dnf install cmake gcc-c++ git
 sudo dnf install qt6-qtbase-devel
 
 # Runtime dependencies
-sudo dnf install pandoc texlive-xetex texlive-collection-fontsrecommended
+sudo dnf install pandoc texlive-xetex texlive-collection-fontsrecommended texlive-lm
 
 # Optional: for headless testing, memory checks, and code coverage
 sudo dnf install xorg-x11-server-Xvfb valgrind lcov

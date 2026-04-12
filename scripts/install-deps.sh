@@ -35,7 +35,10 @@ case $DISTRO in
             qt6-base-dev-tools \
             pandoc \
             texlive-xetex \
+            texlive-latex-base \
+            texlive-latex-recommended \
             texlive-fonts-recommended \
+            lmodern \
             xvfb \
             valgrind \
             lcov
@@ -51,6 +54,7 @@ case $DISTRO in
             pandoc \
             texlive-xetex \
             texlive-collection-fontsrecommended \
+            texlive-lm \
             xorg-x11-server-Xvfb \
             valgrind \
             lcov

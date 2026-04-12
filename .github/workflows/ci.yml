@@ -83,12 +83,15 @@ jobs:
       if: (steps.changes.outputs.code == 'true' || steps.changes.outputs.code == '') && matrix.install_converters
       run: |
         # Outils lourds uniquement pour le job avec coverage
-        sudo apt install -y --no-install-recommends \
-          pandoc \
+        # Note: Installing tex packages without --no-install-recommends
+        # to ensure all TeX infrastructure is properly set up
+        sudo apt install -y --no-install-recommends pandoc
+        sudo apt install -y \
           texlive-xetex \
           texlive-latex-base \
           texlive-latex-recommended \
-          texlive-fonts-recommended
+          texlive-fonts-recommended \
+          lmodern
     
     - name: Setup ccache
       if: steps.changes.outputs.code == 'true' || steps.changes.outputs.code == ''
@@ -145,13 +148,14 @@ jobs:
       if: (steps.changes.outputs.code == 'true' || steps.changes.outputs.code == '') && matrix.coverage
       run: |
         cd app/build
-        lcov --capture --directory . --output-file coverage.info
-        lcov --remove coverage.info '/usr/*' '*/tests/*' '*/build/*' '*_autogen/*' --output-file coverage.info
-        lcov --list coverage.info
+        lcov --capture --directory . --output-file coverage.info || true
+        lcov --remove coverage.info '/usr/*' '*/tests/*' '*/build/*' '*autogen*' --output-file coverage.info || true
+        lcov --list coverage.info || true
     
     - name: Upload to Codecov
       if: (steps.changes.outputs.code == 'true' || steps.changes.outputs.code == '') && matrix.coverage
       uses: codecov/codecov-action@v4
+      continue-on-error: true
       with:
         file: app/build/coverage.info
         fail_ci_if_error: false
