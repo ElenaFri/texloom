@@ -159,10 +159,10 @@ jobs:
     - name: Upload to Codecov
       if: (steps.changes.outputs.code == 'true' || steps.changes.outputs.code == '') && matrix.coverage
       uses: codecov/codecov-action@v4
-      continue-on-error: true
       with:
-        file: app/build/coverage.info
-        fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: app/build/coverage.info
+        fail_ci_if_error: true
         verbose: true
     
     # ========== ARTIFACTS ==========
