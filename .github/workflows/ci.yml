@@ -158,11 +158,19 @@ jobs:
           '*autogen*' \
           '*/src/ui/MainWindow.cpp' \
           '*/src/ui/MainWindow.h' \
+          '*/src/main.cpp' \
           --output-file coverage.info || true
         lcov --list coverage.info || true
         # Verify coverage.info was created before upload
         test -f coverage.info && echo "✓ coverage.info generated" || echo "✗ coverage.info missing"
     
+    - name: Remove raw gcov artifacts
+      if: (steps.changes.outputs.code == 'true' || steps.changes.outputs.code == '') && matrix.coverage
+      run: |
+        echo "Removing .gcno, .gcda, .gcov so Codecov cannot re-run gcov"
+        find app/build -name '*.gcno' -o -name '*.gcda' -o -name '*.gcov' | xargs rm -f
+        echo "✓ raw artifacts removed — only coverage.info remains"
+
     - name: Upload to Codecov
       if: (steps.changes.outputs.code == 'true' || steps.changes.outputs.code == '') && matrix.coverage
       uses: codecov/codecov-action@v4
@@ -170,7 +178,6 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: app/build/coverage.info
         fail_ci_if_error: true
-        verbose: true
     
     # ========== ARTIFACTS ==========
     
