@@ -44,9 +44,7 @@ add_texloom_test(test_conversion_engine test_conversion_engine.cpp)
 
 # UI component tests
 add_texloom_test(test_editor_widget test_editor_widget.cpp)
+add_texloom_test(test_preview_widget test_preview_widget.cpp)
+add_texloom_test(test_project_tree_widget test_project_tree_widget.cpp)
 
-# Example test (optional - can be removed later)
-add_texloom_test(test_example test_example.cpp)
-
-message(STATUS "Tests configured: test_project_model, test_conversion_engine, test_editor_widget")
-message(STATUS "Run 'ctest --output-on-failure' to execute all tests.")
+message(STATUS "Tests configured: test_project_model, test_conversion_engine, test_editor_widget, test_preview_widget, test_project_tree_widget")

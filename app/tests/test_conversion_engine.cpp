@@ -523,6 +523,78 @@ private slots:
         QVERIFY(!m_engine->isBusy());
     }
 
+    void testCompileToPdfWhileBusy()
+    {
+        if (!isPandocAvailable())
+        {
+            QSKIP("Pandoc not installed, skipping busy-state test");
+        }
+
+        QString mdFile = createTestMarkdownFile();
+        QString latexFile = m_tempDir->path() + "/output.tex";
+
+        m_engine->convertToLatex(mdFile, latexFile);
+        QVERIFY(m_engine->isBusy());
+
+        QSignalSpy spyFailed(m_engine, &ConversionEngine::conversionFailed);
+        m_engine->compileToPdf(latexFile, m_tempDir->path() + "/out.pdf");
+
+        QCOMPARE(spyFailed.count(), 1);
+        QVERIFY(spyFailed.takeFirst().at(0).toString().contains("already in progress"));
+
+        // Wait for first conversion to finish cleanly
+        QSignalSpy spyCompleted(m_engine, &ConversionEngine::conversionCompleted);
+        QVERIFY(spyCompleted.wait(10000));
+    }
+
+    void testConvertAllWhileBusy()
+    {
+        if (!isPandocAvailable())
+        {
+            QSKIP("Pandoc not installed, skipping busy-state test");
+        }
+
+        QString mdFile = createTestMarkdownFile();
+        QString latexFile = m_tempDir->path() + "/output.tex";
+
+        m_engine->convertToLatex(mdFile, latexFile);
+        QVERIFY(m_engine->isBusy());
+
+        QSignalSpy spyFailed(m_engine, &ConversionEngine::conversionFailed);
+        m_engine->convertAll(mdFile, m_tempDir->path() + "/out.pdf");
+
+        QCOMPARE(spyFailed.count(), 1);
+        QVERIFY(spyFailed.takeFirst().at(0).toString().contains("already in progress"));
+
+        // Wait for first conversion to finish cleanly
+        QSignalSpy spyCompleted(m_engine, &ConversionEngine::conversionCompleted);
+        QVERIFY(spyCompleted.wait(10000));
+    }
+
+    void testProcessFailedToStart()
+    {
+        // Use a non-existent executable to trigger FailedToStart error
+        m_engine->setPandocOptions(QStringList{});
+        QSignalSpy spyFailed(m_engine, &ConversionEngine::conversionFailed);
+
+        // Temporarily override by calling convertToLatex which runs pandoc
+        // Since pandoc is the binary name, we need a different approach:
+        // compile a LaTeX file via xelatex when xelatex is missing,
+        // or simply call convertToLatex when pandoc is missing.
+        // Either way, if the tool IS installed, the process won't fail to start.
+        // So we test the error path by checking the signal type.
+
+        if (isPandocAvailable())
+        {
+            QSKIP("Cannot test FailedToStart when Pandoc is installed");
+        }
+
+        m_engine->convertToLatex("/dummy.md", m_tempDir->path() + "/out.tex");
+        QVERIFY(spyFailed.wait(5000));
+        QVERIFY(spyFailed.first().at(0).toString().contains("failed to start"));
+        QVERIFY(!m_engine->isBusy());
+    }
+
 private:
     QTemporaryDir *m_tempDir;
     ConversionEngine *m_engine;

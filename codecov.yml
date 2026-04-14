@@ -1,0 +1,14 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+    patch:
+      default:
+        target: 70%
+
+ignore:
+  - "app/src/ui/MainWindow.cpp"
+  - "app/src/ui/MainWindow.h"
+  - "app/tests/**"
+  - "app/src/main.cpp"
