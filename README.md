@@ -1,7 +1,7 @@
 # texloom
 
 ![CI](https://github.com/ElenaFri/texloom/workflows/CI/badge.svg)
-[![codecov](https://codecov.io/gh/ElenaFri/texloom/branch/main/graph/badge.svg)](https://codecov.io/gh/ElenaFri/texloom)
+[![codecov](https://codecov.io/gh/ElenaFri/texloom/graph/badge.svg)](https://codecov.io/gh/ElenaFri/texloom)
 
 A simple Markdown-to-LaTeX converter and text editor. With (useful) GUI.
 
