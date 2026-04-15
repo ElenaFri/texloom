@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "NewProjectDialog.h"
 #include "../core/ProjectModel.h"
 #include "../core/ConversionEngine.h"
 #include "ProjectTreeWidget.h"
@@ -335,17 +336,17 @@ namespace texloom
         if (!maybeSave())
             return;
 
-        QString dir = QFileDialog::getExistingDirectory(this, tr("Select Project Directory"));
-        if (dir.isEmpty())
+        NewProjectDialog dialog(this);
+        if (dialog.exec() != QDialog::Accepted)
             return;
 
-        QString name = QFileInfo(dir).fileName();
         if (m_projectModel->isOpen())
             m_projectModel->closeProject();
 
-        if (m_projectModel->createProject(name, dir))
+        if (m_projectModel->createProject(dialog.projectName(), dialog.projectLocation()))
         {
-            statusBar()->showMessage(tr("Project created: %1").arg(name), 3000);
+            m_projectModel->setTemplateName(dialog.templateName());
+            statusBar()->showMessage(tr("Project created: %1").arg(dialog.projectName()), 3000);
         }
     }
 

@@ -46,8 +46,9 @@ add_texloom_test(test_conversion_engine test_conversion_engine.cpp)
 add_texloom_test(test_editor_widget test_editor_widget.cpp)
 add_texloom_test(test_preview_widget test_preview_widget.cpp)
 add_texloom_test(test_project_tree_widget test_project_tree_widget.cpp)
+add_texloom_test(test_new_project_dialog test_new_project_dialog.cpp)
 
 # Integration tests
 add_texloom_test(test_main_window test_main_window.cpp)
 
-message(STATUS "Tests configured: test_project_model, test_conversion_engine, test_editor_widget, test_preview_widget, test_project_tree_widget, test_main_window")
+message(STATUS "Tests configured: test_project_model, test_conversion_engine, test_editor_widget, test_preview_widget, test_project_tree_widget, test_new_project_dialog, test_main_window")

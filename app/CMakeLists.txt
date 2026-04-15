@@ -69,6 +69,7 @@ set(UI_SOURCES
     src/ui/EditorWidget.cpp
     src/ui/PreviewWidget.cpp
     src/ui/ProjectTreeWidget.cpp
+    src/ui/NewProjectDialog.cpp
 )
 
 set(UI_HEADERS
@@ -76,6 +77,7 @@ set(UI_HEADERS
     src/ui/EditorWidget.h
     src/ui/PreviewWidget.h
     src/ui/ProjectTreeWidget.h
+    src/ui/NewProjectDialog.h
 )
 
 # Core sources
