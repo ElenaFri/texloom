@@ -4,6 +4,7 @@
 #include <QSplitter>
 #include <QTabWidget>
 #include <QDockWidget>
+#include <QMap>
 
 namespace texloom
 {
@@ -107,6 +108,7 @@ namespace texloom
         QTabWidget *m_editorTabs = nullptr;
         PreviewWidget *m_previewWidget = nullptr;
         QDockWidget *m_logDock = nullptr;
+        QMap<QString, EditorWidget *> m_openEditors;
 
         // Layout
         QSplitter *m_mainSplitter = nullptr;
