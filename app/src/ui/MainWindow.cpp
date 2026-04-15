@@ -332,7 +332,21 @@ namespace texloom
 
     void MainWindow::onNewProject()
     {
-        statusBar()->showMessage(tr("New project - not yet implemented"), 3000);
+        if (!maybeSave())
+            return;
+
+        QString dir = QFileDialog::getExistingDirectory(this, tr("Select Project Directory"));
+        if (dir.isEmpty())
+            return;
+
+        QString name = QFileInfo(dir).fileName();
+        if (m_projectModel->isOpen())
+            m_projectModel->closeProject();
+
+        if (m_projectModel->createProject(name, dir))
+        {
+            statusBar()->showMessage(tr("Project created: %1").arg(name), 3000);
+        }
     }
 
     void MainWindow::onOpenProject()
@@ -386,12 +400,16 @@ namespace texloom
 
     void MainWindow::onUndo()
     {
-        statusBar()->showMessage(tr("Undo - not yet implemented"), 3000);
+        auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->currentWidget());
+        if (editor)
+            editor->undo();
     }
 
     void MainWindow::onRedo()
     {
-        statusBar()->showMessage(tr("Redo - not yet implemented"), 3000);
+        auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->currentWidget());
+        if (editor)
+            editor->redo();
     }
 
     void MainWindow::onFind()
@@ -423,27 +441,51 @@ namespace texloom
 
     void MainWindow::onEditorModeCode()
     {
-        statusBar()->showMessage(tr("Switched to Code mode"), 3000);
+        auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->currentWidget());
+        if (editor)
+            editor->setEditorMode(EditorWidget::Mode::Code);
     }
 
     void MainWindow::onEditorModeWysiwyg()
     {
-        statusBar()->showMessage(tr("Switched to WYSIWYG mode"), 3000);
+        auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->currentWidget());
+        if (editor)
+            editor->setEditorMode(EditorWidget::Mode::Wysiwyg);
     }
 
     void MainWindow::onConvertToLatex()
     {
-        statusBar()->showMessage(tr("Convert to LaTeX - not yet implemented"), 3000);
+        auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->currentWidget());
+        if (!editor || editor->currentFile().isEmpty())
+        {
+            statusBar()->showMessage(tr("No file open to convert"), 3000);
+            return;
+        }
+
+        QString mdFile = editor->currentFile();
+        QString latexFile = QFileInfo(mdFile).absolutePath() + "/" +
+                            QFileInfo(mdFile).baseName() + ".tex";
+        m_conversionEngine->convertToLatex(mdFile, latexFile);
     }
 
     void MainWindow::onCompilePdf()
     {
-        statusBar()->showMessage(tr("Compile PDF - not yet implemented"), 3000);
+        auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->currentWidget());
+        if (!editor || editor->currentFile().isEmpty())
+        {
+            statusBar()->showMessage(tr("No file open to compile"), 3000);
+            return;
+        }
+
+        QString mdFile = editor->currentFile();
+        QString pdfFile = QFileInfo(mdFile).absolutePath() + "/" +
+                          QFileInfo(mdFile).baseName() + ".pdf";
+        m_conversionEngine->convertAll(mdFile, pdfFile);
     }
 
     void MainWindow::onCompileAndPreview()
     {
-        statusBar()->showMessage(tr("Compile and Preview - not yet implemented"), 3000);
+        onCompilePdf();
     }
 
     void MainWindow::onBuildSettings()
@@ -466,7 +508,16 @@ namespace texloom
 
     void MainWindow::onProjectClosed()
     {
+        // Close all editor tabs
+        while (m_editorTabs->count() > 0)
+        {
+            QWidget *w = m_editorTabs->widget(0);
+            m_editorTabs->removeTab(0);
+            delete w;
+        }
+
         m_projectTree->clear();
+        m_previewWidget->clear();
 
         updateWindowTitle();
         updateActions();
