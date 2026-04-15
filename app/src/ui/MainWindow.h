@@ -73,6 +73,10 @@ namespace texloom
         void onProjectClosed();
         void onProjectModified();
 
+        // Project tree signals
+        void onFileSelected(const QString &filePath);
+        void onFileDoubleClicked(const QString &filePath);
+
         // Conversion engine signals
         void onConversionStarted();
         void onConversionProgress(const QString &message);

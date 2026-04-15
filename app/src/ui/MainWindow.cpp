@@ -12,6 +12,7 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QCloseEvent>
 
 namespace texloom
@@ -43,6 +44,11 @@ namespace texloom
                 m_projectTree, &ProjectTreeWidget::addFile);
         connect(m_projectModel, &ProjectModel::fileRemoved,
                 m_projectTree, &ProjectTreeWidget::removeFile);
+
+        connect(m_projectTree, &ProjectTreeWidget::fileSelected,
+                this, &MainWindow::onFileSelected);
+        connect(m_projectTree, &ProjectTreeWidget::fileDoubleClicked,
+                this, &MainWindow::onFileDoubleClicked);
 
         connect(m_conversionEngine, &ConversionEngine::conversionStarted,
                 this, &MainWindow::onConversionStarted);
@@ -464,6 +470,39 @@ namespace texloom
     {
         updateWindowTitle();
         updateActions();
+    }
+
+    void MainWindow::onFileSelected(const QString &filePath)
+    {
+        statusBar()->showMessage(filePath, 3000);
+    }
+
+    void MainWindow::onFileDoubleClicked(const QString &filePath)
+    {
+        // Check if already open in a tab
+        for (int i = 0; i < m_editorTabs->count(); ++i)
+        {
+            auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->widget(i));
+            if (editor && editor->currentFile() == filePath)
+            {
+                m_editorTabs->setCurrentIndex(i);
+                return;
+            }
+        }
+
+        // Open in new tab
+        auto *editor = new EditorWidget(this);
+        if (editor->loadFile(filePath))
+        {
+            QFileInfo fi(filePath);
+            m_editorTabs->addTab(editor, fi.fileName());
+            m_editorTabs->setCurrentWidget(editor);
+        }
+        else
+        {
+            delete editor;
+            statusBar()->showMessage(tr("Cannot open file: %1").arg(filePath), 5000);
+        }
     }
 
     void MainWindow::onConversionStarted()
