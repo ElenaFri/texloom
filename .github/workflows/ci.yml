@@ -156,8 +156,6 @@ jobs:
           '*/tests/*' \
           '*/build/*' \
           '*autogen*' \
-          '*/src/ui/MainWindow.cpp' \
-          '*/src/ui/MainWindow.h' \
           '*/src/main.cpp' \
           --output-file coverage.info || true
         lcov --list coverage.info || true

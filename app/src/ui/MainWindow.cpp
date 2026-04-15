@@ -367,6 +367,8 @@ namespace texloom
     {
         if (m_projectModel->saveProject())
         {
+            updateWindowTitle();
+            updateActions();
             statusBar()->showMessage(tr("Project saved"), 3000);
         }
     }
