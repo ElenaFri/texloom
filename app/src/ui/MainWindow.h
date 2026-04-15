@@ -77,6 +77,10 @@ namespace texloom
         void onFileSelected(const QString &filePath);
         void onFileDoubleClicked(const QString &filePath);
 
+        // Editor tab signals
+        void onEditorModified(bool modified);
+        void onTabCloseRequested(int index);
+
         // Conversion engine signals
         void onConversionStarted();
         void onConversionProgress(const QString &message);

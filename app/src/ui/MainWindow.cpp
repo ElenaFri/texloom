@@ -84,6 +84,8 @@ namespace texloom
         m_editorTabs = new QTabWidget(this);
         m_editorTabs->setTabsClosable(true);
         m_editorTabs->setMovable(true);
+        connect(m_editorTabs, &QTabWidget::tabCloseRequested,
+                this, &MainWindow::onTabCloseRequested);
         m_mainSplitter->addWidget(m_editorTabs);
 
         // Preview (right panel) - placeholder for now
@@ -495,8 +497,14 @@ namespace texloom
         if (editor->loadFile(filePath))
         {
             QFileInfo fi(filePath);
-            m_editorTabs->addTab(editor, fi.fileName());
-            m_editorTabs->setCurrentWidget(editor);
+            int idx = m_editorTabs->addTab(editor, fi.fileName());
+            m_editorTabs->setCurrentIndex(idx);
+
+            connect(editor, &EditorWidget::fileModified, this, &MainWindow::onEditorModified);
+            connect(editor, &EditorWidget::modeChanged, this, [this](EditorWidget::Mode mode)
+                    {
+                QString modeName = (mode == EditorWidget::Mode::Code) ? tr("Code") : tr("WYSIWYG");
+                statusBar()->showMessage(tr("Editor mode: %1").arg(modeName), 3000); });
         }
         else
         {
@@ -509,6 +517,44 @@ namespace texloom
     {
         updateActions();
         m_logDock->show();
+    }
+
+    void MainWindow::onEditorModified(bool modified)
+    {
+        auto *editor = qobject_cast<EditorWidget *>(sender());
+        if (!editor)
+            return;
+
+        int idx = m_editorTabs->indexOf(editor);
+        if (idx < 0)
+            return;
+
+        QString title = QFileInfo(editor->currentFile()).fileName();
+        if (modified)
+            title += " *";
+        m_editorTabs->setTabText(idx, title);
+    }
+
+    void MainWindow::onTabCloseRequested(int index)
+    {
+        auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->widget(index));
+        if (!editor)
+            return;
+
+        if (editor->isModified())
+        {
+            QMessageBox::StandardButton ret = QMessageBox::warning(this, tr("TexLoom"),
+                                                                   tr("The file has been modified.\nDo you want to save your changes?"),
+                                                                   QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+
+            if (ret == QMessageBox::Save)
+                editor->saveFile();
+            else if (ret == QMessageBox::Cancel)
+                return;
+        }
+
+        m_editorTabs->removeTab(index);
+        delete editor;
     }
 
     void MainWindow::onConversionProgress(const QString &message)
