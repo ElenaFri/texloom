@@ -483,6 +483,90 @@ private slots:
         // We can't easily dismiss the dialog in tests, so just verify no crash
         // The existing test for onConversionCompleted already covers the pattern
     }
+
+    // ========== EDITOR MAP TRACKING ==========
+
+    void testReopenFileAfterTabClose()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString projFile = createTempProject(dir);
+        model(w)->loadProject(projFile);
+
+        QString file = dir.path() + "/chapter1.md";
+
+        // Open, close, reopen — ensures map entry is removed on close
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, file));
+        QCOMPARE(tabs(w)->count(), 1);
+
+        QMetaObject::invokeMethod(&w, "onTabCloseRequested", Q_ARG(int, 0));
+        QCOMPARE(tabs(w)->count(), 0);
+
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, file));
+        QCOMPARE(tabs(w)->count(), 1);
+        QCOMPARE(tabs(w)->tabText(0), QString("chapter1.md"));
+    }
+
+    void testProjectCloseRemovesMapEntries()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString projFile = createTempProject(dir);
+        model(w)->loadProject(projFile);
+
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
+                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+        QCOMPARE(tabs(w)->count(), 1);
+
+        // Close project clears everything
+        model(w)->closeProject();
+        QCOMPARE(tabs(w)->count(), 0);
+
+        // Reopen project and file — must work (map was cleared)
+        model(w)->loadProject(projFile);
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
+                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+        QCOMPARE(tabs(w)->count(), 1);
+    }
+
+    void testMultipleFilesTrackedIndependently()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString projFile = createTempProject(dir);
+
+        // Create a second file
+        QFile f2(dir.path() + "/chapter2.md");
+        f2.open(QIODevice::WriteOnly);
+        f2.write("# Chapter 2");
+        f2.close();
+
+        model(w)->loadProject(projFile);
+        model(w)->addFile(dir.path() + "/chapter2.md");
+
+        QString file1 = dir.path() + "/chapter1.md";
+        QString file2 = dir.path() + "/chapter2.md";
+
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, file1));
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, file2));
+        QCOMPARE(tabs(w)->count(), 2);
+
+        // Close first file only
+        QMetaObject::invokeMethod(&w, "onTabCloseRequested", Q_ARG(int, 0));
+        QCOMPARE(tabs(w)->count(), 1);
+        QCOMPARE(tabs(w)->tabText(0), QString("chapter2.md"));
+
+        // Reopen first file — should create new tab (not deduplicate)
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, file1));
+        QCOMPARE(tabs(w)->count(), 2);
+
+        // Second file still deduplicates
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, file2));
+        QCOMPARE(tabs(w)->count(), 2);
+    }
 };
 
 QTEST_MAIN(TestMainWindow)

@@ -511,6 +511,7 @@ namespace texloom
     void MainWindow::onProjectClosed()
     {
         // Close all editor tabs
+        m_openEditors.clear();
         while (m_editorTabs->count() > 0)
         {
             QWidget *w = m_editorTabs->widget(0);
@@ -539,15 +540,11 @@ namespace texloom
 
     void MainWindow::onFileDoubleClicked(const QString &filePath)
     {
-        // Check if already open in a tab
-        for (int i = 0; i < m_editorTabs->count(); ++i)
+        // Check if already open via map
+        if (m_openEditors.contains(filePath))
         {
-            auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->widget(i));
-            if (editor && editor->currentFile() == filePath)
-            {
-                m_editorTabs->setCurrentIndex(i);
-                return;
-            }
+            m_editorTabs->setCurrentWidget(m_openEditors.value(filePath));
+            return;
         }
 
         // Open in new tab
@@ -557,6 +554,7 @@ namespace texloom
             QFileInfo fi(filePath);
             int idx = m_editorTabs->addTab(editor, fi.fileName());
             m_editorTabs->setCurrentIndex(idx);
+            m_openEditors.insert(filePath, editor);
             statusBar()->showMessage(tr("Opened: %1").arg(fi.fileName()), 3000);
 
             connect(editor, &EditorWidget::fileModified, this, &MainWindow::onEditorModified);
@@ -614,6 +612,7 @@ namespace texloom
                 return;
         }
 
+        m_openEditors.remove(editor->currentFile());
         m_editorTabs->removeTab(index);
         delete editor;
     }
