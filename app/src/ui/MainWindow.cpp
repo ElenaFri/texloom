@@ -557,6 +557,7 @@ namespace texloom
             QFileInfo fi(filePath);
             int idx = m_editorTabs->addTab(editor, fi.fileName());
             m_editorTabs->setCurrentIndex(idx);
+            statusBar()->showMessage(tr("Opened: %1").arg(fi.fileName()), 3000);
 
             connect(editor, &EditorWidget::fileModified, this, &MainWindow::onEditorModified);
             connect(editor, &EditorWidget::modeChanged, this, [this](EditorWidget::Mode mode)
@@ -575,6 +576,8 @@ namespace texloom
     {
         updateActions();
         m_logDock->show();
+        m_actionToggleLog->setChecked(true);
+        statusBar()->showMessage(tr("Converting..."));
     }
 
     void MainWindow::onEditorModified(bool modified)
@@ -622,11 +625,14 @@ namespace texloom
         {
             log->append(message);
         }
+        statusBar()->showMessage(message);
     }
 
     void MainWindow::onConversionCompleted(const QString &output)
     {
         updateActions();
+        m_actionToggleLog->setChecked(false);
+        m_logDock->hide();
         statusBar()->showMessage(tr("Conversion completed: %1").arg(output), 5000);
     }
 
