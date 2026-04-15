@@ -62,6 +62,11 @@ namespace texloom
         connect(m_conversionEngine, &ConversionEngine::pdfGenerated,
                 m_previewWidget, &PreviewWidget::loadPdf);
 
+        connect(m_previewWidget, &PreviewWidget::pdfLoaded, this, [this](const QString &path)
+                { statusBar()->showMessage(tr("PDF loaded: %1").arg(QFileInfo(path).fileName()), 3000); });
+        connect(m_previewWidget, &PreviewWidget::pdfLoadFailed, this, [this](const QString &error)
+                { statusBar()->showMessage(tr("PDF error: %1").arg(error), 5000); });
+
         // Initial state
         updateWindowTitle();
         updateActions();
