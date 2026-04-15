@@ -15,6 +15,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QCloseEvent>
+#include <QCoreApplication>
 
 namespace texloom
 {
@@ -336,7 +337,8 @@ namespace texloom
         if (!maybeSave())
             return;
 
-        NewProjectDialog dialog(this);
+        QString templatesPath = QCoreApplication::applicationDirPath() + "/../../resources/templates";
+        NewProjectDialog dialog(templatesPath, this);
         if (dialog.exec() != QDialog::Accepted)
             return;
 

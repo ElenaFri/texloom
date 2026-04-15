@@ -13,7 +13,7 @@ namespace texloom
         Q_OBJECT
 
     public:
-        explicit NewProjectDialog(QWidget *parent = nullptr);
+        explicit NewProjectDialog(const QString &templatesPath, QWidget *parent = nullptr);
 
         QString projectName() const;
         QString projectLocation() const;
@@ -25,6 +25,7 @@ namespace texloom
 
     private:
         void setupUi();
+        void populateTemplates(const QString &templatesPath);
 
         QLineEdit *m_nameEdit = nullptr;
         QLineEdit *m_locationEdit = nullptr;

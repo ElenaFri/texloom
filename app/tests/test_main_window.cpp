@@ -355,6 +355,9 @@ private slots:
         QMetaObject::invokeMethod(&w, "onUndo");
         // After undo, text should be reverted
         QVERIFY(editor->toPlainText() != "new text" || editor->document()->isRedoAvailable());
+
+        // Also exercise onRedo with an editor open
+        QMetaObject::invokeMethod(&w, "onRedo");
     }
 
     // ========== EDITOR MODE ==========
@@ -566,6 +569,157 @@ private slots:
         // Second file still deduplicates
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, file2));
         QCOMPARE(tabs(w)->count(), 2);
+    }
+
+    // ========== EDITOR MODE WITH OPEN EDITOR ==========
+
+    void testEditorModeCodeWithEditor()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString projFile = createTempProject(dir);
+        model(w)->loadProject(projFile);
+
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
+                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+
+        auto *editor = qobject_cast<EditorWidget *>(tabs(w)->widget(0));
+        QVERIFY(editor != nullptr);
+
+        QMetaObject::invokeMethod(&w, "onEditorModeCode");
+        QCOMPARE(editor->editorMode(), EditorWidget::Mode::Code);
+    }
+
+    void testEditorModeWysiwygWithEditor()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString projFile = createTempProject(dir);
+        model(w)->loadProject(projFile);
+
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
+                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+
+        auto *editor = qobject_cast<EditorWidget *>(tabs(w)->widget(0));
+        QVERIFY(editor != nullptr);
+
+        QMetaObject::invokeMethod(&w, "onEditorModeWysiwyg");
+        QCOMPARE(editor->editorMode(), EditorWidget::Mode::Wysiwyg);
+    }
+
+    // ========== BUILD WITH OPEN FILE ==========
+
+    void testConvertToLatexWithFileOpen()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString projFile = createTempProject(dir);
+        model(w)->loadProject(projFile);
+
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
+                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+        QCOMPARE(tabs(w)->count(), 1);
+
+        // Invoke conversion — engine will run asynchronously
+        QMetaObject::invokeMethod(&w, "onConvertToLatex");
+        // Engine should be busy (pandoc launched) or already done
+        // No crash is the primary check — plus the engine was invoked
+    }
+
+    void testCompilePdfWithFileOpen()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString projFile = createTempProject(dir);
+        model(w)->loadProject(projFile);
+
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
+                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+        QCOMPARE(tabs(w)->count(), 1);
+
+        QMetaObject::invokeMethod(&w, "onCompilePdf");
+    }
+
+    // ========== PREVIEW WIDGET SIGNALS ==========
+
+    void testPdfLoadedUpdatesStatus()
+    {
+        MainWindow w;
+        emit preview(w)->pdfLoaded("/some/file.pdf");
+        QVERIFY(w.statusBar()->currentMessage().contains("file.pdf"));
+    }
+
+    void testPdfLoadFailedUpdatesStatus()
+    {
+        MainWindow w;
+        emit preview(w)->pdfLoadFailed("file not found");
+        QVERIFY(w.statusBar()->currentMessage().contains("file not found"));
+    }
+
+    // ========== EDITOR MODE CHANGED SIGNAL ==========
+
+    void testModeChangedSignalUpdatesStatus()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString projFile = createTempProject(dir);
+        model(w)->loadProject(projFile);
+
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
+                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+
+        auto *editor = qobject_cast<EditorWidget *>(tabs(w)->widget(0));
+        QVERIFY(editor != nullptr);
+
+        // Trigger mode change signal
+        editor->setEditorMode(EditorWidget::Mode::Wysiwyg);
+        QVERIFY(w.statusBar()->currentMessage().contains("WYSIWYG"));
+
+        editor->setEditorMode(EditorWidget::Mode::Code);
+        QVERIFY(w.statusBar()->currentMessage().contains("Code"));
+    }
+
+    // ========== CLOSE PROJECT / QUIT ==========
+
+    void testCloseProjectSlot()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString projFile = createTempProject(dir);
+        model(w)->loadProject(projFile);
+        QVERIFY(model(w)->isOpen());
+
+        QMetaObject::invokeMethod(&w, "onCloseProject");
+        QVERIFY(!model(w)->isOpen());
+    }
+
+    void testEditorModifiedResetTitle()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString projFile = createTempProject(dir);
+        model(w)->loadProject(projFile);
+
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
+                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+
+        auto *editor = qobject_cast<EditorWidget *>(tabs(w)->widget(0));
+        QVERIFY(editor != nullptr);
+
+        // Modify, then unmodify
+        QTextCursor cursor = editor->textCursor();
+        cursor.insertText("x");
+        QVERIFY(tabs(w)->tabText(0).contains("*"));
+
+        editor->document()->setModified(false);
+        QVERIFY(!tabs(w)->tabText(0).contains("*"));
     }
 };
 

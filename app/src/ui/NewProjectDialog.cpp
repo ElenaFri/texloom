@@ -5,16 +5,18 @@
 #include <QVBoxLayout>
 #include <QFileDialog>
 #include <QDir>
+#include <QFileInfo>
 
 namespace texloom
 {
 
-    NewProjectDialog::NewProjectDialog(QWidget *parent)
+    NewProjectDialog::NewProjectDialog(const QString &templatesPath, QWidget *parent)
         : QDialog(parent)
     {
         setWindowTitle(tr("New Project"));
         setMinimumWidth(450);
         setupUi();
+        populateTemplates(templatesPath);
     }
 
     QString NewProjectDialog::projectName() const
@@ -67,9 +69,6 @@ namespace texloom
 
         // Template selection
         m_templateCombo = new QComboBox(this);
-        m_templateCombo->addItem(tr("Article"), "article");
-        m_templateCombo->addItem(tr("Report"), "report");
-        m_templateCombo->addItem(tr("Thesis"), "thesis");
 
         // Form layout
         auto *formLayout = new QFormLayout;
@@ -99,6 +98,21 @@ namespace texloom
         connect(m_cancelButton, &QPushButton::clicked, this, &QDialog::reject);
         connect(m_nameEdit, &QLineEdit::textChanged, this, &NewProjectDialog::validateInput);
         connect(m_locationEdit, &QLineEdit::textChanged, this, &NewProjectDialog::validateInput);
+    }
+
+    void NewProjectDialog::populateTemplates(const QString &templatesPath)
+    {
+        QDir dir(templatesPath);
+        QStringList filters;
+        filters << "*.latex";
+        QFileInfoList entries = dir.entryInfoList(filters, QDir::Files, QDir::Name);
+        for (const QFileInfo &fi : entries)
+        {
+            QString baseName = fi.baseName();
+            // Capitalize first letter for display
+            QString displayName = baseName.at(0).toUpper() + baseName.mid(1);
+            m_templateCombo->addItem(displayName, baseName);
+        }
     }
 
 } // namespace texloom

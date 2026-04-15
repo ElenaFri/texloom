@@ -3,6 +3,7 @@
 #include <QComboBox>
 #include <QPushButton>
 #include <QTemporaryDir>
+#include <QFile>
 #include "../src/ui/NewProjectDialog.h"
 
 using namespace texloom;
@@ -42,16 +43,35 @@ private:
         return nullptr;
     }
 
+    // Create a temp templates directory with .latex files
+    QString createTempTemplates(QTemporaryDir &dir, const QStringList &names)
+    {
+        QString tplDir = dir.path() + "/templates";
+        QDir().mkpath(tplDir);
+        for (const QString &name : names)
+        {
+            QFile f(tplDir + "/" + name + ".latex");
+            f.open(QIODevice::WriteOnly);
+            f.write("% template");
+            f.close();
+        }
+        return tplDir;
+    }
+
 private slots:
     void testDialogTitle()
     {
-        NewProjectDialog d;
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article", "report"});
+        NewProjectDialog d(tplDir);
         QCOMPARE(d.windowTitle(), tr("New Project"));
     }
 
     void testFieldsExist()
     {
-        NewProjectDialog d;
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article"});
+        NewProjectDialog d(tplDir);
         QVERIFY(nameEdit(d) != nullptr);
         QVERIFY(locationEdit(d) != nullptr);
         QVERIFY(templateCombo(d) != nullptr);
@@ -61,13 +81,17 @@ private slots:
 
     void testCreateButtonDisabledByDefault()
     {
-        NewProjectDialog d;
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article"});
+        NewProjectDialog d(tplDir);
         QVERIFY(!createButton(d)->isEnabled());
     }
 
     void testCreateButtonEnabledWithValidInput()
     {
-        NewProjectDialog d;
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article"});
+        NewProjectDialog d(tplDir);
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
 
@@ -79,7 +103,9 @@ private slots:
 
     void testCreateButtonDisabledWithEmptyName()
     {
-        NewProjectDialog d;
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article"});
+        NewProjectDialog d(tplDir);
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
 
@@ -91,7 +117,9 @@ private slots:
 
     void testCreateButtonDisabledWithEmptyLocation()
     {
-        NewProjectDialog d;
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article"});
+        NewProjectDialog d(tplDir);
 
         nameEdit(d)->setText("MyProject");
         locationEdit(d)->setText("");
@@ -101,7 +129,9 @@ private slots:
 
     void testCreateButtonDisabledWithInvalidLocation()
     {
-        NewProjectDialog d;
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article"});
+        NewProjectDialog d(tplDir);
 
         nameEdit(d)->setText("MyProject");
         locationEdit(d)->setText("/nonexistent/path/that/does/not/exist");
@@ -111,14 +141,18 @@ private slots:
 
     void testProjectNameAccessor()
     {
-        NewProjectDialog d;
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article"});
+        NewProjectDialog d(tplDir);
         nameEdit(d)->setText("  Test Project  ");
         QCOMPARE(d.projectName(), QString("Test Project"));
     }
 
     void testProjectLocationAccessor()
     {
-        NewProjectDialog d;
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article"});
+        NewProjectDialog d(tplDir);
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
 
@@ -126,9 +160,11 @@ private slots:
         QCOMPARE(d.projectLocation(), dir.path());
     }
 
-    void testTemplateOptions()
+    void testTemplatesScannedFromDirectory()
     {
-        NewProjectDialog d;
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article", "report", "thesis"});
+        NewProjectDialog d(tplDir);
         auto *combo = templateCombo(d);
         QCOMPARE(combo->count(), 3);
         QCOMPARE(combo->itemData(0).toString(), QString("article"));
@@ -136,22 +172,54 @@ private slots:
         QCOMPARE(combo->itemData(2).toString(), QString("thesis"));
     }
 
-    void testDefaultTemplate()
+    void testTemplateDisplayNameCapitalized()
     {
-        NewProjectDialog d;
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article", "thesis"});
+        NewProjectDialog d(tplDir);
+        auto *combo = templateCombo(d);
+        QCOMPARE(combo->itemText(0), QString("Article"));
+        QCOMPARE(combo->itemText(1), QString("Thesis"));
+    }
+
+    void testDefaultTemplateIsFirst()
+    {
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article", "report"});
+        NewProjectDialog d(tplDir);
         QCOMPARE(d.templateName(), QString("article"));
     }
 
     void testTemplateSelection()
     {
-        NewProjectDialog d;
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article", "report", "thesis"});
+        NewProjectDialog d(tplDir);
         templateCombo(d)->setCurrentIndex(2);
         QCOMPARE(d.templateName(), QString("thesis"));
     }
 
+    void testEmptyTemplatesDirectory()
+    {
+        QTemporaryDir tmpDir;
+        QString tplDir = tmpDir.path() + "/empty_templates";
+        QDir().mkpath(tplDir);
+        NewProjectDialog d(tplDir);
+        QCOMPARE(templateCombo(d)->count(), 0);
+        QCOMPARE(d.templateName(), QString());
+    }
+
+    void testNonExistentTemplatesDirectory()
+    {
+        NewProjectDialog d("/nonexistent/templates/path");
+        QCOMPARE(templateCombo(d)->count(), 0);
+    }
+
     void testCancelButtonRejects()
     {
-        NewProjectDialog d;
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article"});
+        NewProjectDialog d(tplDir);
         QSignalSpy spy(&d, &QDialog::rejected);
         cancelButton(d)->click();
         QCOMPARE(spy.count(), 1);
@@ -159,7 +227,9 @@ private slots:
 
     void testCreateButtonAccepts()
     {
-        NewProjectDialog d;
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article"});
+        NewProjectDialog d(tplDir);
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
 
@@ -173,7 +243,9 @@ private slots:
 
     void testValidationOnNameChange()
     {
-        NewProjectDialog d;
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article"});
+        NewProjectDialog d(tplDir);
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
 
@@ -189,7 +261,9 @@ private slots:
 
     void testWhitespaceOnlyNameInvalid()
     {
-        NewProjectDialog d;
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article"});
+        NewProjectDialog d(tplDir);
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
 
@@ -197,6 +271,24 @@ private slots:
         locationEdit(d)->setText(dir.path());
 
         QVERIFY(!createButton(d)->isEnabled());
+    }
+
+    void testOnlyLatexFilesScanned()
+    {
+        QTemporaryDir tmpDir;
+        QString tplDir = tmpDir.path() + "/templates";
+        QDir().mkpath(tplDir);
+        // Create .latex and non-.latex files
+        for (const auto &name : {"article.latex", "README.md", "notes.txt"})
+        {
+            QFile f(tplDir + "/" + name);
+            f.open(QIODevice::WriteOnly);
+            f.write("content");
+            f.close();
+        }
+        NewProjectDialog d(tplDir);
+        QCOMPARE(templateCombo(d)->count(), 1);
+        QCOMPARE(templateCombo(d)->itemData(0).toString(), QString("article"));
     }
 };
 
