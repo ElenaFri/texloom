@@ -44,12 +44,17 @@ namespace texloom
         connect(m_projectModel, &ProjectModel::fileRemoved,
                 m_projectTree, &ProjectTreeWidget::removeFile);
 
+        connect(m_conversionEngine, &ConversionEngine::conversionStarted,
+                this, &MainWindow::onConversionStarted);
         connect(m_conversionEngine, &ConversionEngine::conversionProgress,
                 this, &MainWindow::onConversionProgress);
         connect(m_conversionEngine, &ConversionEngine::conversionCompleted,
                 this, &MainWindow::onConversionCompleted);
         connect(m_conversionEngine, &ConversionEngine::conversionFailed,
                 this, &MainWindow::onConversionFailed);
+
+        connect(m_conversionEngine, &ConversionEngine::pdfGenerated,
+                m_previewWidget, &PreviewWidget::loadPdf);
 
         // Initial state
         updateWindowTitle();
