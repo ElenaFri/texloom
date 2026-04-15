@@ -12,6 +12,7 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QCloseEvent>
 
 namespace texloom
@@ -39,12 +40,32 @@ namespace texloom
         connect(m_projectModel, &ProjectModel::projectModified,
                 this, &MainWindow::onProjectModified);
 
+        connect(m_projectModel, &ProjectModel::fileAdded,
+                m_projectTree, &ProjectTreeWidget::addFile);
+        connect(m_projectModel, &ProjectModel::fileRemoved,
+                m_projectTree, &ProjectTreeWidget::removeFile);
+
+        connect(m_projectTree, &ProjectTreeWidget::fileSelected,
+                this, &MainWindow::onFileSelected);
+        connect(m_projectTree, &ProjectTreeWidget::fileDoubleClicked,
+                this, &MainWindow::onFileDoubleClicked);
+
+        connect(m_conversionEngine, &ConversionEngine::conversionStarted,
+                this, &MainWindow::onConversionStarted);
         connect(m_conversionEngine, &ConversionEngine::conversionProgress,
                 this, &MainWindow::onConversionProgress);
         connect(m_conversionEngine, &ConversionEngine::conversionCompleted,
                 this, &MainWindow::onConversionCompleted);
         connect(m_conversionEngine, &ConversionEngine::conversionFailed,
                 this, &MainWindow::onConversionFailed);
+
+        connect(m_conversionEngine, &ConversionEngine::pdfGenerated,
+                m_previewWidget, &PreviewWidget::loadPdf);
+
+        connect(m_previewWidget, &PreviewWidget::pdfLoaded, this, [this](const QString &path)
+                { statusBar()->showMessage(tr("PDF loaded: %1").arg(QFileInfo(path).fileName()), 3000); });
+        connect(m_previewWidget, &PreviewWidget::pdfLoadFailed, this, [this](const QString &error)
+                { statusBar()->showMessage(tr("PDF error: %1").arg(error), 5000); });
 
         // Initial state
         updateWindowTitle();
@@ -68,6 +89,8 @@ namespace texloom
         m_editorTabs = new QTabWidget(this);
         m_editorTabs->setTabsClosable(true);
         m_editorTabs->setMovable(true);
+        connect(m_editorTabs, &QTabWidget::tabCloseRequested,
+                this, &MainWindow::onTabCloseRequested);
         m_mainSplitter->addWidget(m_editorTabs);
 
         // Preview (right panel) - placeholder for now
@@ -309,7 +332,21 @@ namespace texloom
 
     void MainWindow::onNewProject()
     {
-        statusBar()->showMessage(tr("New project - not yet implemented"), 3000);
+        if (!maybeSave())
+            return;
+
+        QString dir = QFileDialog::getExistingDirectory(this, tr("Select Project Directory"));
+        if (dir.isEmpty())
+            return;
+
+        QString name = QFileInfo(dir).fileName();
+        if (m_projectModel->isOpen())
+            m_projectModel->closeProject();
+
+        if (m_projectModel->createProject(name, dir))
+        {
+            statusBar()->showMessage(tr("Project created: %1").arg(name), 3000);
+        }
     }
 
     void MainWindow::onOpenProject()
@@ -330,6 +367,8 @@ namespace texloom
     {
         if (m_projectModel->saveProject())
         {
+            updateWindowTitle();
+            updateActions();
             statusBar()->showMessage(tr("Project saved"), 3000);
         }
     }
@@ -363,12 +402,16 @@ namespace texloom
 
     void MainWindow::onUndo()
     {
-        statusBar()->showMessage(tr("Undo - not yet implemented"), 3000);
+        auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->currentWidget());
+        if (editor)
+            editor->undo();
     }
 
     void MainWindow::onRedo()
     {
-        statusBar()->showMessage(tr("Redo - not yet implemented"), 3000);
+        auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->currentWidget());
+        if (editor)
+            editor->redo();
     }
 
     void MainWindow::onFind()
@@ -400,27 +443,51 @@ namespace texloom
 
     void MainWindow::onEditorModeCode()
     {
-        statusBar()->showMessage(tr("Switched to Code mode"), 3000);
+        auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->currentWidget());
+        if (editor)
+            editor->setEditorMode(EditorWidget::Mode::Code);
     }
 
     void MainWindow::onEditorModeWysiwyg()
     {
-        statusBar()->showMessage(tr("Switched to WYSIWYG mode"), 3000);
+        auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->currentWidget());
+        if (editor)
+            editor->setEditorMode(EditorWidget::Mode::Wysiwyg);
     }
 
     void MainWindow::onConvertToLatex()
     {
-        statusBar()->showMessage(tr("Convert to LaTeX - not yet implemented"), 3000);
+        auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->currentWidget());
+        if (!editor || editor->currentFile().isEmpty())
+        {
+            statusBar()->showMessage(tr("No file open to convert"), 3000);
+            return;
+        }
+
+        QString mdFile = editor->currentFile();
+        QString latexFile = QFileInfo(mdFile).absolutePath() + "/" +
+                            QFileInfo(mdFile).baseName() + ".tex";
+        m_conversionEngine->convertToLatex(mdFile, latexFile);
     }
 
     void MainWindow::onCompilePdf()
     {
-        statusBar()->showMessage(tr("Compile PDF - not yet implemented"), 3000);
+        auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->currentWidget());
+        if (!editor || editor->currentFile().isEmpty())
+        {
+            statusBar()->showMessage(tr("No file open to compile"), 3000);
+            return;
+        }
+
+        QString mdFile = editor->currentFile();
+        QString pdfFile = QFileInfo(mdFile).absolutePath() + "/" +
+                          QFileInfo(mdFile).baseName() + ".pdf";
+        m_conversionEngine->convertAll(mdFile, pdfFile);
     }
 
     void MainWindow::onCompileAndPreview()
     {
-        statusBar()->showMessage(tr("Compile and Preview - not yet implemented"), 3000);
+        onCompilePdf();
     }
 
     void MainWindow::onBuildSettings()
@@ -430,6 +497,12 @@ namespace texloom
 
     void MainWindow::onProjectOpened(const QString &path)
     {
+        m_projectTree->setProjectRoot(m_projectModel->projectName(), path);
+        for (const QString &file : m_projectModel->files())
+        {
+            m_projectTree->addFile(file);
+        }
+
         updateWindowTitle();
         updateActions();
         statusBar()->showMessage(tr("Project opened: %1").arg(path), 3000);
@@ -437,6 +510,17 @@ namespace texloom
 
     void MainWindow::onProjectClosed()
     {
+        // Close all editor tabs
+        while (m_editorTabs->count() > 0)
+        {
+            QWidget *w = m_editorTabs->widget(0);
+            m_editorTabs->removeTab(0);
+            delete w;
+        }
+
+        m_projectTree->clear();
+        m_previewWidget->clear();
+
         updateWindowTitle();
         updateActions();
         statusBar()->showMessage(tr("Project closed"), 3000);
@@ -448,10 +532,90 @@ namespace texloom
         updateActions();
     }
 
+    void MainWindow::onFileSelected(const QString &filePath)
+    {
+        statusBar()->showMessage(filePath, 3000);
+    }
+
+    void MainWindow::onFileDoubleClicked(const QString &filePath)
+    {
+        // Check if already open in a tab
+        for (int i = 0; i < m_editorTabs->count(); ++i)
+        {
+            auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->widget(i));
+            if (editor && editor->currentFile() == filePath)
+            {
+                m_editorTabs->setCurrentIndex(i);
+                return;
+            }
+        }
+
+        // Open in new tab
+        auto *editor = new EditorWidget(this);
+        if (editor->loadFile(filePath))
+        {
+            QFileInfo fi(filePath);
+            int idx = m_editorTabs->addTab(editor, fi.fileName());
+            m_editorTabs->setCurrentIndex(idx);
+            statusBar()->showMessage(tr("Opened: %1").arg(fi.fileName()), 3000);
+
+            connect(editor, &EditorWidget::fileModified, this, &MainWindow::onEditorModified);
+            connect(editor, &EditorWidget::modeChanged, this, [this](EditorWidget::Mode mode)
+                    {
+                QString modeName = (mode == EditorWidget::Mode::Code) ? tr("Code") : tr("WYSIWYG");
+                statusBar()->showMessage(tr("Editor mode: %1").arg(modeName), 3000); });
+        }
+        else
+        {
+            delete editor;
+            statusBar()->showMessage(tr("Cannot open file: %1").arg(filePath), 5000);
+        }
+    }
+
     void MainWindow::onConversionStarted()
     {
         updateActions();
         m_logDock->show();
+        m_actionToggleLog->setChecked(true);
+        statusBar()->showMessage(tr("Converting..."));
+    }
+
+    void MainWindow::onEditorModified(bool modified)
+    {
+        auto *editor = qobject_cast<EditorWidget *>(sender());
+        if (!editor)
+            return;
+
+        int idx = m_editorTabs->indexOf(editor);
+        if (idx < 0)
+            return;
+
+        QString title = QFileInfo(editor->currentFile()).fileName();
+        if (modified)
+            title += " *";
+        m_editorTabs->setTabText(idx, title);
+    }
+
+    void MainWindow::onTabCloseRequested(int index)
+    {
+        auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->widget(index));
+        if (!editor)
+            return;
+
+        if (editor->isModified())
+        {
+            QMessageBox::StandardButton ret = QMessageBox::warning(this, tr("TexLoom"),
+                                                                   tr("The file has been modified.\nDo you want to save your changes?"),
+                                                                   QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+
+            if (ret == QMessageBox::Save)
+                editor->saveFile();
+            else if (ret == QMessageBox::Cancel)
+                return;
+        }
+
+        m_editorTabs->removeTab(index);
+        delete editor;
     }
 
     void MainWindow::onConversionProgress(const QString &message)
@@ -461,11 +625,14 @@ namespace texloom
         {
             log->append(message);
         }
+        statusBar()->showMessage(message);
     }
 
     void MainWindow::onConversionCompleted(const QString &output)
     {
         updateActions();
+        m_actionToggleLog->setChecked(false);
+        m_logDock->hide();
         statusBar()->showMessage(tr("Conversion completed: %1").arg(output), 5000);
     }
 
