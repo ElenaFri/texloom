@@ -39,6 +39,11 @@ namespace texloom
         connect(m_projectModel, &ProjectModel::projectModified,
                 this, &MainWindow::onProjectModified);
 
+        connect(m_projectModel, &ProjectModel::fileAdded,
+                m_projectTree, &ProjectTreeWidget::addFile);
+        connect(m_projectModel, &ProjectModel::fileRemoved,
+                m_projectTree, &ProjectTreeWidget::removeFile);
+
         connect(m_conversionEngine, &ConversionEngine::conversionProgress,
                 this, &MainWindow::onConversionProgress);
         connect(m_conversionEngine, &ConversionEngine::conversionCompleted,
@@ -430,6 +435,12 @@ namespace texloom
 
     void MainWindow::onProjectOpened(const QString &path)
     {
+        m_projectTree->setProjectRoot(m_projectModel->projectName(), path);
+        for (const QString &file : m_projectModel->files())
+        {
+            m_projectTree->addFile(file);
+        }
+
         updateWindowTitle();
         updateActions();
         statusBar()->showMessage(tr("Project opened: %1").arg(path), 3000);
@@ -437,6 +448,8 @@ namespace texloom
 
     void MainWindow::onProjectClosed()
     {
+        m_projectTree->clear();
+
         updateWindowTitle();
         updateActions();
         statusBar()->showMessage(tr("Project closed"), 3000);

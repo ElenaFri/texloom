@@ -1,7 +1,9 @@
 #include <QtTest/QtTest>
 #include <QSignalSpy>
 #include <QTreeWidgetItem>
+#include <QTemporaryDir>
 #include "../src/ui/ProjectTreeWidget.h"
+#include "../src/core/ProjectModel.h"
 
 using namespace texloom;
 
@@ -184,6 +186,101 @@ private slots:
         emit m_tree->itemClicked(root, 0);
 
         QCOMPARE(spy.count(), 0);
+    }
+
+    // ========== SIGNAL WIRING (model → tree integration) ==========
+
+    void testFileAddedSignalWiresToTree()
+    {
+        ProjectModel model;
+        connect(&model, &ProjectModel::fileAdded,
+                m_tree, &ProjectTreeWidget::addFile);
+
+        m_tree->setProjectRoot("Project", "/path");
+        model.createProject("Project", QDir::tempPath() + "/test_wire_add");
+
+        model.addFile("/path/chapter1.md");
+
+        QTreeWidgetItem *root = m_tree->topLevelItem(0);
+        QCOMPARE(root->childCount(), 1);
+        QCOMPARE(root->child(0)->data(0, Qt::UserRole).toString(), QString("/path/chapter1.md"));
+
+        model.closeProject();
+        QDir(QDir::tempPath() + "/test_wire_add").removeRecursively();
+    }
+
+    void testFileRemovedSignalWiresToTree()
+    {
+        ProjectModel model;
+        connect(&model, &ProjectModel::fileRemoved,
+                m_tree, &ProjectTreeWidget::removeFile);
+
+        m_tree->setProjectRoot("Project", "/path");
+        m_tree->addFile("/path/chapter1.md");
+        m_tree->addFile("/path/chapter2.md");
+
+        model.createProject("Project", QDir::tempPath() + "/test_wire_rm");
+        model.addFile("/path/chapter1.md");
+        model.addFile("/path/chapter2.md");
+
+        model.removeFile("/path/chapter1.md");
+
+        QTreeWidgetItem *root = m_tree->topLevelItem(0);
+        QCOMPARE(root->childCount(), 1);
+        QCOMPARE(root->child(0)->data(0, Qt::UserRole).toString(), QString("/path/chapter2.md"));
+
+        model.closeProject();
+        QDir(QDir::tempPath() + "/test_wire_rm").removeRecursively();
+    }
+
+    void testProjectOpenedPopulatesTree()
+    {
+        ProjectModel model;
+        QTemporaryDir tmpDir;
+        QVERIFY(tmpDir.isValid());
+
+        // Create a project with files
+        model.createProject("TestProj", tmpDir.path());
+        model.addFile("/some/file1.md");
+        model.addFile("/some/file2.md");
+        model.saveProject();
+        QString projFile = model.projectFilePath();
+        model.closeProject();
+
+        // Now wire signals and load
+        connect(&model, &ProjectModel::projectOpened, m_tree, [&](const QString &path)
+                {
+            m_tree->setProjectRoot(model.projectName(), path);
+            for (const QString &f : model.files())
+            {
+                m_tree->addFile(f);
+            } });
+
+        model.loadProject(projFile);
+
+        QTreeWidgetItem *root = m_tree->topLevelItem(0);
+        QVERIFY(root != nullptr);
+        QCOMPARE(root->text(0), QString("TestProj"));
+        QCOMPARE(root->childCount(), 2);
+    }
+
+    void testProjectClosedClearsTree()
+    {
+        ProjectModel model;
+        connect(&model, &ProjectModel::projectClosed,
+                m_tree, &ProjectTreeWidget::clear);
+
+        m_tree->setProjectRoot("Project", "/path");
+        m_tree->addFile("/path/file.md");
+
+        QCOMPARE(m_tree->topLevelItemCount(), 1);
+
+        model.createProject("P", QDir::tempPath() + "/test_wire_close");
+        model.closeProject();
+
+        QCOMPARE(m_tree->topLevelItemCount(), 0);
+
+        QDir(QDir::tempPath() + "/test_wire_close").removeRecursively();
     }
 
 private:
