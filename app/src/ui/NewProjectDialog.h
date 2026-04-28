@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QDialog>
+#include <QLabel>
 #include <QLineEdit>
 #include <QComboBox>
 #include <QPushButton>
@@ -33,6 +34,7 @@ namespace texloom
         QComboBox *m_templateCombo = nullptr;
         QPushButton *m_createButton = nullptr;
         QPushButton *m_cancelButton = nullptr;
+        QLabel *m_errorLabel = nullptr;
     };
 
 } // namespace texloom

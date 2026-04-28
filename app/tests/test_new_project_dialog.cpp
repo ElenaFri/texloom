@@ -1,5 +1,6 @@
 #include <QtTest/QtTest>
 #include <QLineEdit>
+#include <QLabel>
 #include <QComboBox>
 #include <QPushButton>
 #include <QTemporaryDir>
@@ -41,6 +42,11 @@ private:
                 return btn;
         }
         return nullptr;
+    }
+
+    QLabel *errorLabel(NewProjectDialog &d)
+    {
+        return d.findChild<QLabel *>("errorLabel");
     }
 
     // Create a temp templates directory with .latex files
@@ -289,6 +295,78 @@ private slots:
         NewProjectDialog d(tplDir);
         QCOMPARE(templateCombo(d)->count(), 1);
         QCOMPARE(templateCombo(d)->itemData(0).toString(), QString("article"));
+    }
+
+    void testErrorLabelExistsInDialog()
+    {
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article"});
+        NewProjectDialog d(tplDir);
+        QVERIFY(errorLabel(d) != nullptr);
+    }
+
+    void testErrorLabelShownWhenNameEmpty()
+    {
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article"});
+        NewProjectDialog d(tplDir);
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+
+        locationEdit(d)->setText(dir.path());
+        nameEdit(d)->setText("");
+
+        QVERIFY(!errorLabel(d)->text().isEmpty());
+        QVERIFY(errorLabel(d)->text().contains("empty", Qt::CaseInsensitive));
+    }
+
+    void testErrorLabelShownWhenLocationNotWritable()
+    {
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article"});
+        NewProjectDialog d(tplDir);
+
+        // /root is a directory that exists but is not writable by a normal user
+        nameEdit(d)->setText("MyProject");
+        locationEdit(d)->setText("/root");
+
+        if (QFileInfo("/root").isWritable())
+            QSKIP("Running as root, cannot test non-writable directory");
+
+        QVERIFY(!createButton(d)->isEnabled());
+        QVERIFY(errorLabel(d)->text().contains("writable", Qt::CaseInsensitive));
+    }
+
+    void testErrorLabelShownWhenLocationDoesNotExist()
+    {
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article"});
+        NewProjectDialog d(tplDir);
+
+        nameEdit(d)->setText("MyProject");
+        locationEdit(d)->setText("/nonexistent/path/xyz");
+
+        QVERIFY(!createButton(d)->isEnabled());
+        QVERIFY(errorLabel(d)->text().contains("exist", Qt::CaseInsensitive));
+    }
+
+    void testErrorLabelClearedWhenValid()
+    {
+        QTemporaryDir tmpDir;
+        QString tplDir = createTempTemplates(tmpDir, {"article"});
+        NewProjectDialog d(tplDir);
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+
+        // First trigger an error
+        nameEdit(d)->setText("");
+        locationEdit(d)->setText(dir.path());
+        QVERIFY(!errorLabel(d)->text().isEmpty());
+
+        // Then fix it
+        nameEdit(d)->setText("ValidName");
+        QVERIFY(errorLabel(d)->text().isEmpty());
+        QVERIFY(createButton(d)->isEnabled());
     }
 };
 

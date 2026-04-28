@@ -6,6 +6,7 @@
 #include <QFileDialog>
 #include <QDir>
 #include <QFileInfo>
+#include <QLabel>
 
 namespace texloom
 {
@@ -46,10 +47,32 @@ namespace texloom
 
     void NewProjectDialog::validateInput()
     {
-        bool valid = !m_nameEdit->text().trimmed().isEmpty() &&
-                     !m_locationEdit->text().trimmed().isEmpty() &&
-                     QDir(m_locationEdit->text().trimmed()).exists();
-        m_createButton->setEnabled(valid);
+        QString name = m_nameEdit->text().trimmed();
+        QString location = m_locationEdit->text().trimmed();
+
+        if (name.isEmpty())
+        {
+            m_errorLabel->setText(tr("Project name cannot be empty."));
+            m_createButton->setEnabled(false);
+            return;
+        }
+
+        if (location.isEmpty() || !QDir(location).exists())
+        {
+            m_errorLabel->setText(tr("Location does not exist."));
+            m_createButton->setEnabled(false);
+            return;
+        }
+
+        if (!QFileInfo(location).isWritable())
+        {
+            m_errorLabel->setText(tr("Location is not writable."));
+            m_createButton->setEnabled(false);
+            return;
+        }
+
+        m_errorLabel->clear();
+        m_createButton->setEnabled(true);
     }
 
     void NewProjectDialog::setupUi()
@@ -87,9 +110,17 @@ namespace texloom
         buttonLayout->addWidget(m_createButton);
         buttonLayout->addWidget(m_cancelButton);
 
+        // Error label
+        m_errorLabel = new QLabel(this);
+        m_errorLabel->setObjectName("errorLabel");
+        QPalette palette = m_errorLabel->palette();
+        palette.setColor(QPalette::WindowText, Qt::red);
+        m_errorLabel->setPalette(palette);
+
         // Main layout
         auto *mainLayout = new QVBoxLayout(this);
         mainLayout->addLayout(formLayout);
+        mainLayout->addWidget(m_errorLabel);
         mainLayout->addLayout(buttonLayout);
 
         // Connections
