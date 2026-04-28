@@ -595,6 +595,28 @@ private slots:
         QVERIFY(!m_engine->isBusy());
     }
 
+    void testOnProcessErrorWithHiddenPath()
+    {
+        // Temporarily hide pandoc by blanking PATH to trigger onProcessError
+        QByteArray origPath = qgetenv("PATH");
+        qputenv("PATH", QByteArray("/nonexistent_dir_for_testing"));
+
+        QString mdFile = createTestMarkdownFile();
+        QVERIFY(!mdFile.isEmpty());
+
+        QSignalSpy spyFailed(m_engine, &ConversionEngine::conversionFailed);
+        m_engine->convertToLatex(mdFile, m_tempDir->path() + "/out.tex");
+        bool gotSignal = spyFailed.wait(5000);
+
+        // Restore PATH before assertions so it is always restored
+        qputenv("PATH", origPath);
+
+        QVERIFY(gotSignal);
+        QString errorMsg = spyFailed.first().at(0).toString();
+        QVERIFY(errorMsg.contains("failed to start", Qt::CaseInsensitive));
+        QVERIFY(!m_engine->isBusy());
+    }
+
 private:
     QTemporaryDir *m_tempDir;
     ConversionEngine *m_engine;

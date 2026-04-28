@@ -45,6 +45,17 @@ private slots:
         // Verify project file exists
         QString projectFile = m_tempDir->path() + "/TestProject.texloom";
         QVERIFY(QFile::exists(projectFile));
+
+        // Verify initial project structure exists
+        QVERIFY(QDir(m_tempDir->path() + "/chapters").exists());
+        QVERIFY(QDir(m_tempDir->path() + "/images").exists());
+        QVERIFY(QDir(m_tempDir->path() + "/build").exists());
+
+        // Verify initial content file exists and is tracked
+        QString initialMd = m_tempDir->path() + "/chapters/chapter1.md";
+        QVERIFY(QFile::exists(initialMd));
+        QCOMPARE(m_model->files().count(), 1);
+        QCOMPARE(m_model->files().first(), initialMd);
     }
 
     void testSaveAndLoadProject()
@@ -70,7 +81,8 @@ private slots:
         QVERIFY(m_model->isOpen());
         QVERIFY(!m_model->isModified());
         QCOMPARE(m_model->projectName(), QString("SaveLoadTest"));
-        QCOMPARE(m_model->files().count(), 2);
+        QCOMPARE(m_model->files().count(), 3);
+        QVERIFY(m_model->files().contains(m_tempDir->path() + "/chapters/chapter1.md"));
         QVERIFY(m_model->files().contains("/path/to/file1.md"));
         QVERIFY(m_model->files().contains("/path/to/file2.md"));
         QCOMPARE(m_model->templateName(), QString("article"));
@@ -88,7 +100,7 @@ private slots:
         m_model->addFile("/path/to/file1.md");
         m_model->addFile("/path/to/file2.md");
 
-        QCOMPARE(m_model->files().count(), 2);
+        QCOMPARE(m_model->files().count(), 3);
         QVERIFY(m_model->files().contains("/path/to/file1.md"));
         QVERIFY(m_model->files().contains("/path/to/file2.md"));
         QCOMPARE(spyFileAdded.count(), 2);
@@ -109,9 +121,10 @@ private slots:
 
         m_model->removeFile("/path/to/file1.md");
 
-        QCOMPARE(m_model->files().count(), 1);
+        QCOMPARE(m_model->files().count(), 2);
         QVERIFY(!m_model->files().contains("/path/to/file1.md"));
         QVERIFY(m_model->files().contains("/path/to/file2.md"));
+        QVERIFY(m_model->files().contains(m_tempDir->path() + "/chapters/chapter1.md"));
         QCOMPARE(spyFileRemoved.count(), 1);
         QCOMPARE(spyModified.count(), 1);
         QVERIFY(m_model->isModified());
@@ -191,15 +204,9 @@ private slots:
 
     void testCreateProjectWithEmptyName()
     {
-        // Empty name should still create a file, but it might be problematic
         bool result = m_model->createProject("", m_tempDir->path());
-
-        // This exposes a potential bug: empty names should be rejected
-        // The current implementation allows it, which might be incorrect
-        if (result)
-        {
-            QVERIFY(m_model->projectFilePath().endsWith("/.texloom"));
-        }
+        QVERIFY(!result);
+        QVERIFY(!m_model->isOpen());
     }
 
     void testLoadNonExistentProject()
@@ -237,7 +244,7 @@ private slots:
         m_model->createProject("DupTest", m_tempDir->path());
 
         m_model->addFile("/path/to/file.md");
-        QCOMPARE(m_model->files().count(), 1);
+        QCOMPARE(m_model->files().count(), 2);
 
         QSignalSpy spyFileAdded(m_model, &ProjectModel::fileAdded);
 
@@ -245,7 +252,7 @@ private slots:
         m_model->addFile("/path/to/file.md");
 
         // Should not add duplicate
-        QCOMPARE(m_model->files().count(), 1);
+        QCOMPARE(m_model->files().count(), 2);
         QCOMPARE(spyFileAdded.count(), 0); // Signal not emitted
     }
 
