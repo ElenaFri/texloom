@@ -11,7 +11,11 @@
 #include <QFile>
 #include <QAction>
 #include <QTextCursor>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QTimer>
 #include "../src/ui/MainWindow.h"
+#include "../src/ui/NewProjectDialog.h"
 #include "../src/ui/ProjectTreeWidget.h"
 #include "../src/ui/EditorWidget.h"
 #include "../src/ui/PreviewWidget.h"
@@ -192,6 +196,116 @@ private slots:
         QMetaObject::invokeMethod(&w, "onSaveProject");
         QVERIFY(!model(w)->isModified());
         QVERIFY(!w.windowTitle().contains("*"));
+    }
+
+    void testNewProjectAcceptedCreatesProject()
+    {
+        MainWindow w;
+        QTemporaryDir newProjectDir;
+        QVERIFY(newProjectDir.isValid());
+        bool dialogHandled = false;
+
+        QTimer::singleShot(0, [&]()
+                           {
+            auto *dialog = qobject_cast<NewProjectDialog *>(QApplication::activeModalWidget());
+            if (!dialog)
+                return;
+
+            auto edits = dialog->findChildren<QLineEdit *>(QString(), Qt::FindDirectChildrenOnly);
+            if (edits.size() >= 2)
+            {
+                edits.at(0)->setText("CreatedFromDialog");
+                edits.at(1)->setText(newProjectDir.path());
+            }
+
+            for (auto *btn : dialog->findChildren<QPushButton *>())
+            {
+                if (btn->text() == "Create")
+                {
+                    btn->click();
+                    dialogHandled = true;
+                    return;
+                }
+            } });
+
+        QMetaObject::invokeMethod(&w, "onNewProject");
+
+        QVERIFY(dialogHandled);
+        QVERIFY(model(w)->isOpen());
+        QCOMPARE(model(w)->projectName(), QString("CreatedFromDialog"));
+        QVERIFY(QFile::exists(newProjectDir.path() + "/CreatedFromDialog.texloom"));
+    }
+
+    void testNewProjectCanceledDoesNotCreateProject()
+    {
+        MainWindow w;
+        bool dialogHandled = false;
+
+        QTimer::singleShot(0, [&]()
+                           {
+            auto *dialog = qobject_cast<NewProjectDialog *>(QApplication::activeModalWidget());
+            if (!dialog)
+                return;
+
+            for (auto *btn : dialog->findChildren<QPushButton *>())
+            {
+                if (btn->text() == "Cancel")
+                {
+                    btn->click();
+                    dialogHandled = true;
+                    return;
+                }
+            } });
+
+        QMetaObject::invokeMethod(&w, "onNewProject");
+
+        QVERIFY(dialogHandled);
+        QVERIFY(!model(w)->isOpen());
+    }
+
+    void testNewProjectClosesCurrentProjectBeforeCreate()
+    {
+        MainWindow w;
+        QTemporaryDir existingDir;
+        QTemporaryDir newProjectDir;
+        QVERIFY(existingDir.isValid());
+        QVERIFY(newProjectDir.isValid());
+
+        QString existingProjectFile = createTempProject(existingDir);
+        QVERIFY(model(w)->loadProject(existingProjectFile));
+        QCOMPARE(model(w)->projectName(), QString("TestProj"));
+
+        bool dialogHandled = false;
+        QTimer::singleShot(0, [&]()
+                           {
+            auto *dialog = qobject_cast<NewProjectDialog *>(QApplication::activeModalWidget());
+            if (!dialog)
+                return;
+
+            auto edits = dialog->findChildren<QLineEdit *>(QString(), Qt::FindDirectChildrenOnly);
+            if (edits.size() >= 2)
+            {
+                edits.at(0)->setText("SecondProject");
+                edits.at(1)->setText(newProjectDir.path());
+            }
+
+            for (auto *btn : dialog->findChildren<QPushButton *>())
+            {
+                if (btn->text() == "Create")
+                {
+                    btn->click();
+                    dialogHandled = true;
+                    return;
+                }
+            } });
+
+        QMetaObject::invokeMethod(&w, "onNewProject");
+
+        QVERIFY(dialogHandled);
+        QVERIFY(model(w)->isOpen());
+        QCOMPARE(model(w)->projectName(), QString("SecondProject"));
+        QCOMPARE(model(w)->projectPath(), newProjectDir.path());
+        QVERIFY(QFile::exists(newProjectDir.path() + "/SecondProject.texloom"));
     }
 
     // ========== TAB MANAGEMENT ==========
