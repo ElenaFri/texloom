@@ -50,6 +50,9 @@ namespace texloom
         void onSaveProjectAs();
         void onCloseProject();
         void onQuit();
+        void onNewMarkdownFile();
+        void onAddExistingFile();
+        void onRemoveFile();
 
         // Edit menu
         void onUndo();
@@ -88,6 +91,10 @@ namespace texloom
         void onConversionCompleted(const QString &output);
         void onConversionFailed(const QString &error);
 
+        // Internal helpers exposed as slots for deterministic tests
+        void onAddFileToProject(const QString &filePath);
+        void onCreateMarkdownFileAtPath(const QString &filePath);
+
     private:
         void setupUi();
         void createActions();
@@ -120,6 +127,9 @@ namespace texloom
         QAction *m_actionSaveProjectAs = nullptr;
         QAction *m_actionCloseProject = nullptr;
         QAction *m_actionQuit = nullptr;
+        QAction *m_actionNewMarkdownFile = nullptr;
+        QAction *m_actionAddExistingFile = nullptr;
+        QAction *m_actionRemoveFile = nullptr;
 
         // Actions - Edit menu
         QAction *m_actionUndo = nullptr;

@@ -261,7 +261,7 @@ private slots:
         QTreeWidgetItem *root = m_tree->topLevelItem(0);
         QVERIFY(root != nullptr);
         QCOMPARE(root->text(0), QString("TestProj"));
-        QCOMPARE(root->childCount(), 2);
+        QCOMPARE(root->childCount(), 3);
     }
 
     void testProjectClosedClearsTree()

@@ -14,6 +14,10 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QInputDialog>
+#include <QDir>
+#include <QFile>
+#include <QTextStream>
 #include <QCloseEvent>
 #include <QCoreApplication>
 
@@ -85,6 +89,7 @@ namespace texloom
 
         // Project tree (left panel) - placeholder for now
         m_projectTree = new ProjectTreeWidget(this);
+        m_projectTree->setContextMenuPolicy(Qt::ActionsContextMenu);
         m_mainSplitter->addWidget(m_projectTree);
 
         // Editor tabs (center)
@@ -144,6 +149,21 @@ namespace texloom
         m_actionQuit = new QAction(tr("&Quit"), this);
         m_actionQuit->setShortcut(QKeySequence::Quit);
         connect(m_actionQuit, &QAction::triggered, this, &MainWindow::onQuit);
+
+        m_actionNewMarkdownFile = new QAction(tr("New Markdown File"), this);
+        m_actionNewMarkdownFile->setShortcut(Qt::CTRL | Qt::ALT | Qt::Key_N);
+        connect(m_actionNewMarkdownFile, &QAction::triggered, this, &MainWindow::onNewMarkdownFile);
+
+        m_actionAddExistingFile = new QAction(tr("Add Existing File..."), this);
+        connect(m_actionAddExistingFile, &QAction::triggered, this, &MainWindow::onAddExistingFile);
+
+        m_actionRemoveFile = new QAction(tr("Remove File"), this);
+        connect(m_actionRemoveFile, &QAction::triggered, this, &MainWindow::onRemoveFile);
+
+        // Project tree context menu
+        m_projectTree->addAction(m_actionNewMarkdownFile);
+        m_projectTree->addAction(m_actionAddExistingFile);
+        m_projectTree->addAction(m_actionRemoveFile);
 
         // Edit menu
         m_actionUndo = new QAction(tr("&Undo"), this);
@@ -212,6 +232,10 @@ namespace texloom
         fileMenu->addAction(m_actionSaveProjectAs);
         fileMenu->addAction(m_actionCloseProject);
         fileMenu->addSeparator();
+        fileMenu->addAction(m_actionNewMarkdownFile);
+        fileMenu->addAction(m_actionAddExistingFile);
+        fileMenu->addAction(m_actionRemoveFile);
+        fileMenu->addSeparator();
         fileMenu->addAction(m_actionQuit);
 
         // Edit menu
@@ -251,6 +275,7 @@ namespace texloom
         toolbar->addAction(m_actionNewProject);
         toolbar->addAction(m_actionOpenProject);
         toolbar->addAction(m_actionSaveProject);
+        toolbar->addAction(m_actionNewMarkdownFile);
         toolbar->addSeparator();
         toolbar->addAction(m_actionConvertToLatex);
         toolbar->addAction(m_actionCompilePdf);
@@ -288,6 +313,9 @@ namespace texloom
         m_actionSaveProject->setEnabled(projectOpen && projectModified);
         m_actionSaveProjectAs->setEnabled(projectOpen);
         m_actionCloseProject->setEnabled(projectOpen);
+        m_actionNewMarkdownFile->setEnabled(projectOpen);
+        m_actionAddExistingFile->setEnabled(projectOpen);
+        m_actionRemoveFile->setEnabled(projectOpen);
 
         m_actionConvertToLatex->setEnabled(projectOpen && !conversionBusy);
         m_actionCompilePdf->setEnabled(projectOpen && !conversionBusy);
@@ -401,6 +429,82 @@ namespace texloom
     void MainWindow::onQuit()
     {
         close();
+    }
+
+    void MainWindow::onNewMarkdownFile()
+    {
+        if (!m_projectModel->isOpen())
+        {
+            statusBar()->showMessage(tr("No project open"), 3000);
+            return;
+        }
+
+        QString defaultPath = QDir(m_projectModel->projectPath()).filePath("new_file.md");
+        QString fileName = QFileDialog::getSaveFileName(this,
+                                                        tr("New Markdown File"),
+                                                        defaultPath,
+                                                        tr("Markdown Files (*.md)"));
+        if (fileName.isEmpty())
+            return;
+
+        if (!fileName.endsWith(".md", Qt::CaseInsensitive))
+            fileName += ".md";
+
+        onCreateMarkdownFileAtPath(fileName);
+    }
+
+    void MainWindow::onAddExistingFile()
+    {
+        if (!m_projectModel->isOpen())
+        {
+            statusBar()->showMessage(tr("No project open"), 3000);
+            return;
+        }
+
+        QString fileName = QFileDialog::getOpenFileName(this,
+                                                        tr("Add Existing File"),
+                                                        m_projectModel->projectPath(),
+                                                        tr("Markdown Files (*.md)"));
+        if (fileName.isEmpty())
+            return;
+
+        onAddFileToProject(fileName);
+    }
+
+    void MainWindow::onRemoveFile()
+    {
+        if (!m_projectModel->isOpen())
+        {
+            statusBar()->showMessage(tr("No project open"), 3000);
+            return;
+        }
+
+        auto *item = m_projectTree->currentItem();
+        if (!item)
+        {
+            statusBar()->showMessage(tr("No file selected"), 3000);
+            return;
+        }
+
+        QString filePath = item->data(0, Qt::UserRole).toString();
+        if (filePath.isEmpty())
+        {
+            statusBar()->showMessage(tr("Select a file to remove"), 3000);
+            return;
+        }
+
+        if (m_openEditors.contains(filePath))
+        {
+            auto *editor = m_openEditors.value(filePath);
+            int idx = m_editorTabs->indexOf(editor);
+            if (idx >= 0)
+                m_editorTabs->removeTab(idx);
+            m_openEditors.remove(filePath);
+            delete editor;
+        }
+
+        m_projectModel->removeFile(filePath);
+        statusBar()->showMessage(tr("Removed file: %1").arg(QFileInfo(filePath).fileName()), 3000);
     }
 
     void MainWindow::onUndo()
@@ -643,6 +747,48 @@ namespace texloom
         updateActions();
         statusBar()->showMessage(tr("Conversion failed: %1").arg(error), 5000);
         QMessageBox::warning(this, tr("Conversion Error"), error);
+    }
+
+    void MainWindow::onAddFileToProject(const QString &filePath)
+    {
+        if (!m_projectModel->isOpen())
+        {
+            statusBar()->showMessage(tr("No project open"), 3000);
+            return;
+        }
+
+        QFileInfo fi(filePath);
+        if (!fi.exists())
+        {
+            statusBar()->showMessage(tr("File does not exist: %1").arg(filePath), 5000);
+            return;
+        }
+
+        m_projectModel->addFile(filePath);
+        statusBar()->showMessage(tr("Added file: %1").arg(fi.fileName()), 3000);
+    }
+
+    void MainWindow::onCreateMarkdownFileAtPath(const QString &filePath)
+    {
+        if (!m_projectModel->isOpen())
+        {
+            statusBar()->showMessage(tr("No project open"), 3000);
+            return;
+        }
+
+        QFile file(filePath);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            statusBar()->showMessage(tr("Cannot create file: %1").arg(filePath), 5000);
+            return;
+        }
+
+        QTextStream out(&file);
+        QString title = QFileInfo(filePath).completeBaseName();
+        out << "# " << title << "\n\n";
+        file.close();
+
+        onAddFileToProject(filePath);
     }
 
 } // namespace texloom

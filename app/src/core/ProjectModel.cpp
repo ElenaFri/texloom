@@ -21,10 +21,47 @@ namespace texloom
             return false;
         }
 
+        if (name.trimmed().isEmpty())
+        {
+            emit errorOccurred("Project name cannot be empty");
+            return false;
+        }
+
+        QDir projectDir(path);
+        if (!projectDir.exists() && !QDir().mkpath(path))
+        {
+            emit errorOccurred("Cannot create project directory: " + path);
+            return false;
+        }
+
+        const QStringList subDirs = {"chapters", "images", "build"};
+        for (const QString &subDir : subDirs)
+        {
+            if (!projectDir.mkpath(subDir))
+            {
+                emit errorOccurred("Cannot create project subdirectory: " + projectDir.filePath(subDir));
+                return false;
+            }
+        }
+
+        const QString initialFilePath = projectDir.filePath("chapters/chapter1.md");
+        if (!QFile::exists(initialFilePath))
+        {
+            QFile initialFile(initialFilePath);
+            if (!initialFile.open(QIODevice::WriteOnly | QIODevice::Text))
+            {
+                emit errorOccurred("Cannot create initial file: " + initialFilePath);
+                return false;
+            }
+            initialFile.write("# Chapter 1\n\n");
+            initialFile.close();
+        }
+
         m_projectName = name;
         m_projectPath = path;
         m_projectFilePath = path + "/" + name + ".texloom";
         m_files.clear();
+        m_files.append(initialFilePath);
         m_isOpen = true;
         m_isModified = true;
 

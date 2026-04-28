@@ -60,16 +60,8 @@ private:
     {
         ProjectModel m;
         m.createProject("TestProj", dir.path());
-        m.addFile(dir.path() + "/chapter1.md");
-        m.saveProject();
         QString path = m.projectFilePath();
         m.closeProject();
-
-        // Create the markdown file so editor can load it
-        QFile f(dir.path() + "/chapter1.md");
-        f.open(QIODevice::WriteOnly);
-        f.write("# Hello World\n");
-        f.close();
 
         return path;
     }
@@ -90,10 +82,37 @@ private slots:
         // Save/close disabled when no project open
         QAction *save = findAction(w, "Save Project");
         QAction *close = findAction(w, "Close Project");
+        QAction *newFile = findAction(w, "New Markdown File");
+        QAction *addFile = findAction(w, "Add Existing File");
+        QAction *removeFile = findAction(w, "Remove File");
         QVERIFY(save != nullptr);
         QVERIFY(close != nullptr);
+        QVERIFY(newFile != nullptr);
+        QVERIFY(addFile != nullptr);
+        QVERIFY(removeFile != nullptr);
         QVERIFY(!save->isEnabled());
         QVERIFY(!close->isEnabled());
+        QVERIFY(!newFile->isEnabled());
+        QVERIFY(!addFile->isEnabled());
+        QVERIFY(!removeFile->isEnabled());
+    }
+
+    void testProjectTreeContextMenuActionsConfigured()
+    {
+        MainWindow w;
+        QCOMPARE(tree(w)->contextMenuPolicy(), Qt::ActionsContextMenu);
+
+        QAction *newFile = findAction(w, "New Markdown File");
+        QAction *addFile = findAction(w, "Add Existing File");
+        QAction *removeFile = findAction(w, "Remove File");
+        QVERIFY(newFile != nullptr);
+        QVERIFY(addFile != nullptr);
+        QVERIFY(removeFile != nullptr);
+
+        const QList<QAction *> treeActions = tree(w)->actions();
+        QVERIFY(treeActions.contains(newFile));
+        QVERIFY(treeActions.contains(addFile));
+        QVERIFY(treeActions.contains(removeFile));
     }
 
     void testMenusCreated()
@@ -142,7 +161,13 @@ private slots:
         QCOMPARE(tree(w)->topLevelItem(0)->childCount(), 1);
         // Actions enabled
         QAction *closeAct = findAction(w, "Close Project");
+        QAction *newFile = findAction(w, "New Markdown File");
+        QAction *addFile = findAction(w, "Add Existing File");
+        QAction *removeFile = findAction(w, "Remove File");
         QVERIFY(closeAct->isEnabled());
+        QVERIFY(newFile->isEnabled());
+        QVERIFY(addFile->isEnabled());
+        QVERIFY(removeFile->isEnabled());
     }
 
     void testProjectClosed()
@@ -156,7 +181,7 @@ private slots:
         // Open a file in a tab
         w.findChild<ProjectTreeWidget *>(); // just checking
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
-                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+                                  Q_ARG(QString, dir.path() + "/chapters/chapter1.md"));
 
         QCOMPARE(tabs(w)->count(), 1);
 
@@ -234,6 +259,14 @@ private slots:
         QVERIFY(model(w)->isOpen());
         QCOMPARE(model(w)->projectName(), QString("CreatedFromDialog"));
         QVERIFY(QFile::exists(newProjectDir.path() + "/CreatedFromDialog.texloom"));
+
+        // New project should appear in tree with the initial file
+        QCOMPARE(tree(w)->topLevelItemCount(), 1);
+        QTreeWidgetItem *root = tree(w)->topLevelItem(0);
+        QVERIFY(root != nullptr);
+        QCOMPARE(root->text(0), QString("CreatedFromDialog"));
+        QCOMPARE(root->childCount(), 1);
+        QCOMPARE(root->child(0)->text(0), QString("chapter1.md"));
     }
 
     void testNewProjectCanceledDoesNotCreateProject()
@@ -308,6 +341,75 @@ private slots:
         QVERIFY(QFile::exists(newProjectDir.path() + "/SecondProject.texloom"));
     }
 
+    void testAddFileToProjectUpdatesModelAndTree()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString projFile = createTempProject(dir);
+        QVERIFY(model(w)->loadProject(projFile));
+
+        QString newFilePath = dir.path() + "/extra.md";
+        QFile f(newFilePath);
+        QVERIFY(f.open(QIODevice::WriteOnly | QIODevice::Text));
+        f.write("# Extra\n");
+        f.close();
+
+        QMetaObject::invokeMethod(&w, "onAddFileToProject", Q_ARG(QString, newFilePath));
+
+        QVERIFY(model(w)->files().contains(newFilePath));
+        QTreeWidgetItem *root = tree(w)->topLevelItem(0);
+        QVERIFY(root != nullptr);
+        QCOMPARE(root->childCount(), 2);
+        QCOMPARE(root->child(1)->text(0), QString("extra.md"));
+    }
+
+    void testCreateMarkdownFileAtPathCreatesAndAddsFile()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString projFile = createTempProject(dir);
+        QVERIFY(model(w)->loadProject(projFile));
+
+        QString newFilePath = dir.path() + "/generated.md";
+        QMetaObject::invokeMethod(&w, "onCreateMarkdownFileAtPath", Q_ARG(QString, newFilePath));
+
+        QVERIFY(QFile::exists(newFilePath));
+        QVERIFY(model(w)->files().contains(newFilePath));
+
+        QFile created(newFilePath);
+        QVERIFY(created.open(QIODevice::ReadOnly | QIODevice::Text));
+        const QString content = QString::fromUtf8(created.readAll());
+        QVERIFY(content.contains("# generated"));
+    }
+
+    void testRemoveFileRemovesFromModelAndTree()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString projFile = createTempProject(dir);
+        QVERIFY(model(w)->loadProject(projFile));
+
+        QString removable = dir.path() + "/to_remove.md";
+        QFile f(removable);
+        QVERIFY(f.open(QIODevice::WriteOnly | QIODevice::Text));
+        f.write("# Remove me\n");
+        f.close();
+        model(w)->addFile(removable);
+
+        QTreeWidgetItem *root = tree(w)->topLevelItem(0);
+        QVERIFY(root != nullptr);
+        QVERIFY(root->childCount() >= 2);
+        tree(w)->setCurrentItem(root->child(root->childCount() - 1));
+
+        QMetaObject::invokeMethod(&w, "onRemoveFile");
+
+        QVERIFY(!model(w)->files().contains(removable));
+        QCOMPARE(root->childCount(), 1);
+    }
+
     // ========== TAB MANAGEMENT ==========
 
     void testFileDoubleClickOpensTab()
@@ -319,7 +421,7 @@ private slots:
         model(w)->loadProject(projFile);
 
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
-                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+                                  Q_ARG(QString, dir.path() + "/chapters/chapter1.md"));
 
         QCOMPARE(tabs(w)->count(), 1);
         QCOMPARE(tabs(w)->tabText(0), QString("chapter1.md"));
@@ -333,7 +435,7 @@ private slots:
         QString projFile = createTempProject(dir);
         model(w)->loadProject(projFile);
 
-        QString file = dir.path() + "/chapter1.md";
+        QString file = dir.path() + "/chapters/chapter1.md";
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, file));
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, file));
 
@@ -357,7 +459,7 @@ private slots:
         model(w)->loadProject(projFile);
 
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
-                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+                                  Q_ARG(QString, dir.path() + "/chapters/chapter1.md"));
         QCOMPARE(tabs(w)->count(), 1);
 
         QMetaObject::invokeMethod(&w, "onTabCloseRequested", Q_ARG(int, 0));
@@ -373,7 +475,7 @@ private slots:
         model(w)->loadProject(projFile);
 
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
-                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+                                  Q_ARG(QString, dir.path() + "/chapters/chapter1.md"));
 
         auto *editor = qobject_cast<EditorWidget *>(tabs(w)->widget(0));
         QVERIFY(editor != nullptr);
@@ -458,7 +560,7 @@ private slots:
         model(w)->loadProject(projFile);
 
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
-                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+                                  Q_ARG(QString, dir.path() + "/chapters/chapter1.md"));
 
         auto *editor = qobject_cast<EditorWidget *>(tabs(w)->widget(0));
         // Insert text via cursor to preserve undo history (setPlainText clears it)
@@ -587,7 +689,7 @@ private slots:
         model(w)->loadProject(projFile);
 
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
-                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+                                  Q_ARG(QString, dir.path() + "/chapters/chapter1.md"));
 
         QVERIFY(w.statusBar()->currentMessage().contains("chapter1.md"));
     }
@@ -611,7 +713,7 @@ private slots:
         QString projFile = createTempProject(dir);
         model(w)->loadProject(projFile);
 
-        QString file = dir.path() + "/chapter1.md";
+        QString file = dir.path() + "/chapters/chapter1.md";
 
         // Open, close, reopen — ensures map entry is removed on close
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, file));
@@ -634,7 +736,7 @@ private slots:
         model(w)->loadProject(projFile);
 
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
-                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+                                  Q_ARG(QString, dir.path() + "/chapters/chapter1.md"));
         QCOMPARE(tabs(w)->count(), 1);
 
         // Close project clears everything
@@ -644,7 +746,7 @@ private slots:
         // Reopen project and file — must work (map was cleared)
         model(w)->loadProject(projFile);
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
-                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+                                  Q_ARG(QString, dir.path() + "/chapters/chapter1.md"));
         QCOMPARE(tabs(w)->count(), 1);
     }
 
@@ -664,7 +766,7 @@ private slots:
         model(w)->loadProject(projFile);
         model(w)->addFile(dir.path() + "/chapter2.md");
 
-        QString file1 = dir.path() + "/chapter1.md";
+        QString file1 = dir.path() + "/chapters/chapter1.md";
         QString file2 = dir.path() + "/chapter2.md";
 
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, file1));
@@ -696,7 +798,7 @@ private slots:
         model(w)->loadProject(projFile);
 
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
-                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+                                  Q_ARG(QString, dir.path() + "/chapters/chapter1.md"));
 
         auto *editor = qobject_cast<EditorWidget *>(tabs(w)->widget(0));
         QVERIFY(editor != nullptr);
@@ -714,7 +816,7 @@ private slots:
         model(w)->loadProject(projFile);
 
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
-                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+                                  Q_ARG(QString, dir.path() + "/chapters/chapter1.md"));
 
         auto *editor = qobject_cast<EditorWidget *>(tabs(w)->widget(0));
         QVERIFY(editor != nullptr);
@@ -734,7 +836,7 @@ private slots:
         model(w)->loadProject(projFile);
 
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
-                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+                                  Q_ARG(QString, dir.path() + "/chapters/chapter1.md"));
         QCOMPARE(tabs(w)->count(), 1);
 
         // Invoke conversion — engine will run asynchronously
@@ -752,7 +854,7 @@ private slots:
         model(w)->loadProject(projFile);
 
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
-                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+                                  Q_ARG(QString, dir.path() + "/chapters/chapter1.md"));
         QCOMPARE(tabs(w)->count(), 1);
 
         QMetaObject::invokeMethod(&w, "onCompilePdf");
@@ -785,7 +887,7 @@ private slots:
         model(w)->loadProject(projFile);
 
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
-                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+                                  Q_ARG(QString, dir.path() + "/chapters/chapter1.md"));
 
         auto *editor = qobject_cast<EditorWidget *>(tabs(w)->widget(0));
         QVERIFY(editor != nullptr);
@@ -822,7 +924,7 @@ private slots:
         model(w)->loadProject(projFile);
 
         QMetaObject::invokeMethod(&w, "onFileDoubleClicked",
-                                  Q_ARG(QString, dir.path() + "/chapter1.md"));
+                                  Q_ARG(QString, dir.path() + "/chapters/chapter1.md"));
 
         auto *editor = qobject_cast<EditorWidget *>(tabs(w)->widget(0));
         QVERIFY(editor != nullptr);
