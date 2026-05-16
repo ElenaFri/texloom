@@ -1,5 +1,6 @@
 #include "ProjectTreeWidget.h"
 #include <QFileInfo>
+#include <QStyle>
 
 namespace texloom
 {
@@ -8,7 +9,8 @@ namespace texloom
         : QTreeWidget(parent)
     {
         setHeaderLabel(tr("Project"));
-        setColumnCount(1);
+        setRootIsDecorated(false);
+        setIndentation(10); // Slight indentation to visually distinguish child files from the project root
 
         connect(this, &QTreeWidget::itemClicked,
                 this, &ProjectTreeWidget::onItemClicked);
@@ -23,9 +25,8 @@ namespace texloom
         m_projectPath = path;
         m_rootItem = new QTreeWidgetItem(this);
         m_rootItem->setText(0, name);
+        m_rootItem->setIcon(0, style()->standardIcon(QStyle::SP_DirIcon));
         m_rootItem->setExpanded(true);
-
-        addTopLevelItem(m_rootItem);
     }
 
     void ProjectTreeWidget::addFile(const QString &filePath)
@@ -39,6 +40,8 @@ namespace texloom
         QTreeWidgetItem *fileItem = new QTreeWidgetItem(m_rootItem);
         fileItem->setText(0, fileInfo.fileName());
         fileItem->setData(0, Qt::UserRole, filePath);
+
+        fileItem->setIcon(0, style()->standardIcon(QStyle::SP_FileIcon));
     }
 
     void ProjectTreeWidget::removeFile(const QString &filePath)

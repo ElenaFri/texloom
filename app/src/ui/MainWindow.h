@@ -103,6 +103,13 @@ namespace texloom
         void createStatusBar();
         void updateWindowTitle();
         void updateActions();
+        void applyTexLoomAppearance();
+        QStringList availableGtkThemes() const;
+        void applyQtStyleTheme(const QString &styleName);
+        void applyGtkTheme(const QString &themeName);
+        void saveThemePreference(const QString &themeType, const QString &themeValue);
+        void applySavedThemeOrSystemDefault();
+        void refreshOpenEditorSyntaxThemes();
 
         bool maybeSave();
 
@@ -125,6 +132,7 @@ namespace texloom
 
         // Layout
         QSplitter *m_mainSplitter = nullptr;
+        QString m_systemStyleName;
 
         // Actions - File menu
         QAction *m_actionNewProject = nullptr;

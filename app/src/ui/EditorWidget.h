@@ -45,6 +45,10 @@ namespace texloom
         // Editor mode
         [[nodiscard]] Mode editorMode() const noexcept { return m_mode; }
         void setEditorMode(Mode mode);
+        void refreshSyntaxTheme();
+
+    protected:
+        void changeEvent(QEvent *event) override;
 
     signals:
         void fileModified(bool modified);

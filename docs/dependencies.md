@@ -1,6 +1,6 @@
 # TexLoom — Dependencies
 
-_This is the initial version, may be edited anytime soon._
+_This may be edited anytime soon._
 
 This document lists all dependencies required to develop and build TexLoom from source.
 
@@ -56,6 +56,9 @@ sudo apt update
 sudo apt install build-essential cmake git
 sudo apt install qt6-base-dev qt6-base-dev-tools qt6-pdf-dev
 
+# Native GTK rendering (optional but recommended on GNOME/Linux)
+sudo apt install qgnomeplatform-qt6
+
 # Runtime dependencies
 sudo apt install pandoc texlive-xetex texlive-latex-base texlive-latex-recommended texlive-fonts-recommended lmodern
 
@@ -63,12 +66,17 @@ sudo apt install pandoc texlive-xetex texlive-latex-base texlive-latex-recommend
 sudo apt install xvfb valgrind lcov
 ```
 
+> **Note:** For full GTK/GNOME integration (buttons, menus, system colours), install `qgnomeplatform-qt6`. TexLoom will use it automatically when available.
+
 ### Fedora/RHEL
 
 ```bash
 # Build dependencies
 sudo dnf install cmake gcc-c++ git
 sudo dnf install qt6-qtbase-devel qt6-qtpdf-devel
+
+# Native GTK rendering (optional but recommended on GNOME/Linux)
+sudo dnf install qgnomeplatform-qt6
 
 # Runtime dependencies
 sudo dnf install pandoc texlive-xetex texlive-collection-fontsrecommended texlive-lm
@@ -83,6 +91,9 @@ sudo dnf install xorg-x11-server-Xvfb valgrind lcov
 # Build dependencies
 sudo pacman -S base-devel cmake git qt6-base
 sudo pacman -S qt6-pdf
+
+# Native GTK rendering (optional but recommended on GNOME/Linux)
+sudo pacman -S qgnomeplatform-qt6
 
 # Runtime dependencies
 sudo pacman -S pandoc texlive-xetex texlive-fontsrecommended

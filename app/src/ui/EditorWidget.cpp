@@ -1,6 +1,7 @@
 #include "EditorWidget.h"
 #include "MarkdownHighlighter.h"
 
+#include <QEvent>
 #include <QFile>
 #include <QTextStream>
 #include <QFileInfo>
@@ -75,6 +76,24 @@ namespace texloom
 
             // TODO: Implement WYSIWYG mode
             // For now, only Code mode is supported
+        }
+    }
+
+    void EditorWidget::refreshSyntaxTheme()
+    {
+        if (m_highlighter)
+        {
+            m_highlighter->refreshFromPalette();
+        }
+    }
+
+    void EditorWidget::changeEvent(QEvent *event)
+    {
+        QPlainTextEdit::changeEvent(event);
+
+        if (event->type() == QEvent::PaletteChange && m_highlighter)
+        {
+            refreshSyntaxTheme();
         }
     }
 

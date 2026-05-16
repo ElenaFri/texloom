@@ -13,6 +13,7 @@ namespace texloom
     public:
         explicit MarkdownHighlighter(QTextDocument *parent = nullptr);
         ~MarkdownHighlighter() override = default;
+        void refreshFromPalette();
 
         MarkdownHighlighter(const MarkdownHighlighter &) = delete;
         MarkdownHighlighter &operator=(const MarkdownHighlighter &) = delete;
