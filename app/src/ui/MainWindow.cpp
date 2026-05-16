@@ -20,6 +20,12 @@
 #include <QTextStream>
 #include <QCloseEvent>
 #include <QCoreApplication>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QGridLayout>
+#include <QFrame>
+#include <QPushButton>
+#include <QToolButton>
 
 namespace texloom
 {
@@ -37,6 +43,28 @@ namespace texloom
         createMenus();
         createToolbar();
         createStatusBar();
+
+        setStyleSheet(
+            "QMainWindow { background: #f6f7f9; }"
+            "QMenuBar { background: #f3f4f7; border-bottom: 1px solid #d9dde3; }"
+            "QMenuBar::item { padding: 8px 10px; color: #39414f; }"
+            "QToolBar { background: #f7f8fa; border: none; border-bottom: 1px solid #d9dde3; spacing: 6px; padding: 6px 8px; }"
+            "QToolButton { background: #ffffff; border: 1px solid #ccd2da; border-radius: 6px; padding: 7px 12px; color: #2f3641; }"
+            "QToolButton:hover { background: #f1f4f8; }"
+            "QToolButton:pressed { background: #e7edf6; }"
+            "QToolButton:disabled { color: #a6acb5; background: #f7f8fa; }"
+            "QTabWidget::pane { border: 1px solid #d9dde3; background: #ffffff; border-radius: 8px; }"
+            "QTabBar::tab { background: #f0f3f8; border: 1px solid #d9dde3; border-bottom: none; border-top: 3px solid transparent; padding: 8px 14px; margin-right: 4px; border-top-left-radius: 6px; border-top-right-radius: 6px; }"
+            "QTabBar::tab:selected { background: #ffffff; color: #1e5cb3; font-weight: 600; border-top: 3px solid #1e5cb3; }"
+            "QFrame#panelCard { background: #ffffff; border: 1px solid #d9dde3; border-radius: 8px; }"
+            "QFrame#sectionCard { background: #ffffff; border: 1px solid #d9dde3; border-radius: 8px; }"
+            "QLabel#panelTitle { color: #2e3745; font-size: 22px; font-weight: 600; padding: 6px 2px; }"
+            "QLabel#statusValue { color: #2e3745; font-weight: 600; }"
+            "QStatusBar { background: #f7f8fa; border-top: 1px solid #d9dde3; color: #536072; }"
+            "QTreeWidget { border: none; background: transparent; }"
+            "QTreeView::branch { border-image: none; image: none; }"
+            "QTreeWidget::item { height: 28px; border-radius: 5px; }"
+            "QTreeWidget::item:selected { background: #e7effa; color: #1f2937; }");
 
         // Connect signals
         connect(m_projectModel, &ProjectModel::projectOpened,
@@ -87,24 +115,126 @@ namespace texloom
         // Create main splitter
         m_mainSplitter = new QSplitter(Qt::Horizontal, this);
 
-        // Project tree (left panel) - placeholder for now
+        // Left sidebar with project tree and status card
+        auto *leftSidebar = new QWidget(this);
+        auto *leftLayout = new QVBoxLayout(leftSidebar);
+        leftLayout->setContentsMargins(0, 0, 0, 0);
+        leftLayout->setSpacing(12);
+
+        auto *projectCard = new QFrame(leftSidebar);
+        projectCard->setObjectName("panelCard");
+        auto *projectLayout = new QVBoxLayout(projectCard);
+        projectLayout->setContentsMargins(12, 12, 12, 12);
+        projectLayout->setSpacing(8);
+
+        auto *projectTitle = new QLabel(tr("Project"), projectCard);
+        projectTitle->setObjectName("panelTitle");
+        projectLayout->addWidget(projectTitle);
+
         m_projectTree = new ProjectTreeWidget(this);
         m_projectTree->setContextMenuPolicy(Qt::ActionsContextMenu);
-        m_mainSplitter->addWidget(m_projectTree);
+        projectLayout->addWidget(m_projectTree, 1);
 
-        // Editor tabs (center)
-        m_editorTabs = new QTabWidget(this);
+        leftLayout->addWidget(projectCard, 1);
+
+        auto *statusCard = new QFrame(leftSidebar);
+        statusCard->setObjectName("panelCard");
+        auto *statusLayout = new QVBoxLayout(statusCard);
+        statusLayout->setContentsMargins(12, 12, 12, 12);
+        statusLayout->setSpacing(10);
+
+        auto *statusTitle = new QLabel(tr("Status"), statusCard);
+        statusTitle->setObjectName("panelTitle");
+        statusLayout->addWidget(statusTitle);
+
+        auto *statusGrid = new QGridLayout();
+        statusGrid->setContentsMargins(0, 0, 0, 0);
+        statusGrid->setHorizontalSpacing(8);
+        statusGrid->setVerticalSpacing(8);
+        statusGrid->setColumnStretch(0, 1);
+        statusGrid->setColumnStretch(1, 0);
+
+        auto *engineKey = new QLabel(tr("LaTeX engine"), statusCard);
+        auto *engineValue = new QLabel(tr("pdfLaTeX"), statusCard);
+        engineValue->setObjectName("statusValue");
+        engineValue->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+        auto *compileKey = new QLabel(tr("Compilation"), statusCard);
+        auto *compileValue = new QLabel(tr("No errors"), statusCard);
+        compileValue->setObjectName("statusValue");
+        compileValue->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+        auto *lastCompileKey = new QLabel(tr("Last compilation"), statusCard);
+        auto *lastCompileValue = new QLabel(tr("1 minute ago"), statusCard);
+        lastCompileValue->setObjectName("statusValue");
+        lastCompileValue->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+        statusGrid->addWidget(engineKey, 0, 0);
+        statusGrid->addWidget(engineValue, 0, 1);
+        statusGrid->addWidget(compileKey, 1, 0);
+        statusGrid->addWidget(compileValue, 1, 1);
+        statusGrid->addWidget(lastCompileKey, 2, 0);
+        statusGrid->addWidget(lastCompileValue, 2, 1);
+
+        statusLayout->addLayout(statusGrid);
+
+        auto *openPdfButton = new QPushButton(tr("Open PDF"), statusCard);
+        openPdfButton->setMinimumHeight(36);
+        openPdfButton->setStyleSheet("QPushButton { background: #1557bf; color: white; border: none; border-radius: 6px; font-weight: 600; }"
+                                     "QPushButton:hover { background: #0f49a1; }");
+        statusLayout->addWidget(openPdfButton);
+
+        leftLayout->addWidget(statusCard, 0);
+
+        m_mainSplitter->addWidget(leftSidebar);
+
+        // Editor panel (center)
+        auto *editorPanel = new QFrame(this);
+        editorPanel->setObjectName("sectionCard");
+        auto *editorLayout = new QVBoxLayout(editorPanel);
+        editorLayout->setContentsMargins(8, 8, 8, 8);
+        editorLayout->setSpacing(8);
+
+        auto *editorControls = new QToolBar(editorPanel);
+        editorControls->setMovable(false);
+        editorControls->setFloatable(false);
+        editorControls->setIconSize(QSize(16, 16));
+        editorControls->addAction(tr("B"));
+        editorControls->addAction(tr("I"));
+        editorControls->addAction(tr("H"));
+        editorControls->addSeparator();
+        editorControls->addAction(tr("List"));
+        editorControls->addAction(tr("Link"));
+        editorControls->addAction(tr("Code"));
+        editorControls->addAction(tr("Image"));
+        editorLayout->addWidget(editorControls);
+
+        m_editorTabs = new QTabWidget(editorPanel);
         m_editorTabs->setTabsClosable(true);
         m_editorTabs->setMovable(true);
         connect(m_editorTabs, &QTabWidget::tabCloseRequested,
                 this, &MainWindow::onTabCloseRequested);
-        m_mainSplitter->addWidget(m_editorTabs);
+        editorLayout->addWidget(m_editorTabs, 1);
 
-        // Preview (right panel) - placeholder for now
-        m_previewWidget = new PreviewWidget(this);
-        m_mainSplitter->addWidget(m_previewWidget);
+        m_mainSplitter->addWidget(editorPanel);
 
-        // Set splitter proportions: 1:2:2 (tree:editor:preview)
+        // Preview panel (right)
+        auto *previewPanel = new QFrame(this);
+        previewPanel->setObjectName("sectionCard");
+        auto *previewLayout = new QVBoxLayout(previewPanel);
+        previewLayout->setContentsMargins(8, 8, 8, 8);
+        previewLayout->setSpacing(8);
+
+        auto *previewTitle = new QLabel(tr("PDF Preview"), previewPanel);
+        previewTitle->setObjectName("panelTitle");
+        previewLayout->addWidget(previewTitle);
+
+        m_previewWidget = new PreviewWidget(previewPanel);
+        previewLayout->addWidget(m_previewWidget, 1);
+
+        m_mainSplitter->addWidget(previewPanel);
+
+        // Set splitter proportions close to the mockup
         m_mainSplitter->setStretchFactor(0, 1);
         m_mainSplitter->setStretchFactor(1, 2);
         m_mainSplitter->setStretchFactor(2, 2);
@@ -272,6 +402,10 @@ namespace texloom
     void MainWindow::createToolbar()
     {
         QToolBar *toolbar = addToolBar(tr("Main Toolbar"));
+        toolbar->setMovable(false);
+        toolbar->setFloatable(false);
+        toolbar->setIconSize(QSize(16, 16));
+
         toolbar->addAction(m_actionNewProject);
         toolbar->addAction(m_actionOpenProject);
         toolbar->addAction(m_actionSaveProject);
@@ -280,6 +414,19 @@ namespace texloom
         toolbar->addAction(m_actionConvertToLatex);
         toolbar->addAction(m_actionCompilePdf);
         toolbar->addAction(m_actionCompileAndPreview);
+
+        auto *spacer = new QWidget(toolbar);
+        spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+        toolbar->addWidget(spacer);
+
+        auto *themeButton = new QToolButton(toolbar);
+        themeButton->setText(tr("Theme"));
+        toolbar->addWidget(themeButton);
+
+        auto *settingsButton = new QToolButton(toolbar);
+        settingsButton->setText(tr("Settings"));
+        connect(settingsButton, &QToolButton::clicked, this, &MainWindow::onBuildSettings);
+        toolbar->addWidget(settingsButton);
     }
 
     void MainWindow::createStatusBar()

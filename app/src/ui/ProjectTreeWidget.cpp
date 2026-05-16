@@ -1,5 +1,6 @@
 #include "ProjectTreeWidget.h"
 #include <QFileInfo>
+#include <QStyle>
 
 namespace texloom
 {
@@ -9,6 +10,8 @@ namespace texloom
     {
         setHeaderLabel(tr("Project"));
         setColumnCount(1);
+        setRootIsDecorated(false);
+        setIndentation(14);
 
         connect(this, &QTreeWidget::itemClicked,
                 this, &ProjectTreeWidget::onItemClicked);
@@ -23,6 +26,7 @@ namespace texloom
         m_projectPath = path;
         m_rootItem = new QTreeWidgetItem(this);
         m_rootItem->setText(0, name);
+        m_rootItem->setIcon(0, style()->standardIcon(QStyle::SP_DirIcon));
         m_rootItem->setExpanded(true);
 
         addTopLevelItem(m_rootItem);
@@ -39,6 +43,26 @@ namespace texloom
         QTreeWidgetItem *fileItem = new QTreeWidgetItem(m_rootItem);
         fileItem->setText(0, fileInfo.fileName());
         fileItem->setData(0, Qt::UserRole, filePath);
+
+        QIcon fileIcon;
+        if (fileInfo.suffix().compare("md", Qt::CaseInsensitive) == 0)
+        {
+            fileIcon = style()->standardIcon(QStyle::SP_FileIcon);
+        }
+        else if (fileInfo.suffix().compare("tex", Qt::CaseInsensitive) == 0)
+        {
+            fileIcon = style()->standardIcon(QStyle::SP_FileIcon);
+        }
+        else if (fileInfo.suffix().compare("bib", Qt::CaseInsensitive) == 0)
+        {
+            fileIcon = style()->standardIcon(QStyle::SP_FileIcon);
+        }
+        else
+        {
+            fileIcon = style()->standardIcon(QStyle::SP_FileIcon);
+        }
+
+        fileItem->setIcon(0, fileIcon);
     }
 
     void ProjectTreeWidget::removeFile(const QString &filePath)

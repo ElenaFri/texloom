@@ -27,6 +27,8 @@ namespace texloom
         m_nextPageButton = new QToolButton(this);
         m_nextPageButton->setText(tr("Next"));
         m_pageLabel = new QLabel(this);
+        m_pageLabel->setAlignment(Qt::AlignCenter);
+        m_pageLabel->setMinimumWidth(92);
 
         m_zoomOutButton = new QToolButton(this);
         m_zoomOutButton->setText(tr("-"));
@@ -69,6 +71,12 @@ namespace texloom
 
                 m_currentPdf = m_pendingPdfPath;
                 m_pendingPdfPath.clear();
+
+                if (m_pdfDocument->pageCount() > 0 && m_pdfView->pageNavigator()->currentPage() < 0)
+                {
+                    m_pdfView->pageNavigator()->jump(0, QPointF(0.0, 0.0));
+                }
+
                 setStatusMessage(tr("Loaded PDF: %1").arg(QFileInfo(m_currentPdf).fileName()));
                 updateNavigationUi();
                 emit pdfLoaded(m_currentPdf);
@@ -200,10 +208,11 @@ namespace texloom
     {
 #if TEXLOOM_HAS_QT_PDF
         const int pageCount = m_pdfDocument->pageCount();
-        const int currentPage = m_pdfView->pageNavigator()->currentPage();
+        const int rawCurrentPage = m_pdfView->pageNavigator()->currentPage();
+        const int currentPage = qMax(0, rawCurrentPage);
 
         const bool hasPages = pageCount > 0;
-        m_prevPageButton->setEnabled(hasPages && currentPage > 0);
+        m_prevPageButton->setEnabled(hasPages && rawCurrentPage > 0);
         m_nextPageButton->setEnabled(hasPages && currentPage + 1 < pageCount);
 
         if (hasPages)
@@ -212,7 +221,7 @@ namespace texloom
         }
         else
         {
-            m_pageLabel->setText(tr("Page - / -"));
+            m_pageLabel->setText(tr("Page 0 / 0"));
         }
 
         m_zoomInButton->setEnabled(hasPages);

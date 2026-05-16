@@ -16,30 +16,33 @@ namespace texloom
     MarkdownHighlighter::MarkdownHighlighter(QTextDocument *parent)
         : QSyntaxHighlighter(parent)
     {
-        m_heading1Format.setForeground(QColor("#8b1e3f"));
+        const QColor headingBlue("#1f5eb6");
+        const QColor bodyText("#2f3641");
+
+        m_heading1Format.setForeground(headingBlue);
         m_heading1Format.setFontWeight(QFont::Bold);
 
-        m_heading2Format.setForeground(QColor("#a14a1a"));
+        m_heading2Format.setForeground(headingBlue);
         m_heading2Format.setFontWeight(QFont::Bold);
 
-        m_heading3Format.setForeground(QColor("#155e63"));
+        m_heading3Format.setForeground(headingBlue);
         m_heading3Format.setFontWeight(QFont::DemiBold);
 
-        m_boldFormat.setForeground(QColor("#18206f"));
+        m_boldFormat.setForeground(bodyText);
         m_boldFormat.setFontWeight(QFont::Bold);
 
-        m_italicFormat.setForeground(QColor("#6a1b78"));
+        m_italicFormat.setForeground(bodyText);
         m_italicFormat.setFontItalic(true);
 
-        m_inlineCodeFormat.setForeground(QColor("#234e52"));
-        m_inlineCodeFormat.setBackground(QColor("#e6f4f1"));
+        m_inlineCodeFormat.setForeground(QColor("#2b3340"));
+        m_inlineCodeFormat.setBackground(QColor("#f1f4f8"));
         m_inlineCodeFormat.setFontFamilies({QStringLiteral("monospace")});
 
-        m_linkFormat.setForeground(QColor("#005a9c"));
+        m_linkFormat.setForeground(QColor("#1f5eb6"));
         m_linkFormat.setFontUnderline(true);
 
-        m_codeBlockFormat.setForeground(QColor("#1f2933"));
-        m_codeBlockFormat.setBackground(QColor("#eef2f6"));
+        m_codeBlockFormat.setForeground(QColor("#2b3340"));
+        m_codeBlockFormat.setBackground(QColor("#f7f9fc"));
         m_codeBlockFormat.setFontFamilies({QStringLiteral("monospace")});
     }
 
