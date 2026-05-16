@@ -2,9 +2,11 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFileInfo>
+#if TEXLOOM_HAS_QT_PDF
 #include <QPdfDocument>
 #include <QPdfPageNavigator>
 #include <QPdfView>
+#endif
 #include <QToolButton>
 
 namespace texloom
@@ -13,6 +15,7 @@ namespace texloom
     PreviewWidget::PreviewWidget(QWidget *parent)
         : QWidget(parent)
     {
+#if TEXLOOM_HAS_QT_PDF
         m_pdfDocument = new QPdfDocument(this);
         m_pdfView = new QPdfView(this);
         m_pdfView->setDocument(m_pdfDocument);
@@ -127,6 +130,15 @@ namespace texloom
 
         connect(m_fitPageButton, &QToolButton::clicked, this, [this]()
                 { m_pdfView->setZoomMode(QPdfView::ZoomMode::FitInView); });
+#else
+        m_fallbackLabel = new QLabel(tr("PDF preview unavailable\n\nInstall Qt6 Pdf/PdfWidgets to enable embedded preview."), this);
+        m_fallbackLabel->setAlignment(Qt::AlignCenter);
+        m_fallbackLabel->setStyleSheet("QLabel { color: gray; font-size: 13px; }");
+
+        auto *layout = new QVBoxLayout(this);
+        layout->addWidget(m_fallbackLabel);
+        setLayout(layout);
+#endif
 
         clear();
     }
@@ -140,6 +152,7 @@ namespace texloom
             return false;
         }
 
+#if TEXLOOM_HAS_QT_PDF
         m_pendingPdfPath = pdfPath;
         const QPdfDocument::Error error = m_pdfDocument->load(pdfPath);
         if (error != QPdfDocument::Error::None)
@@ -153,21 +166,39 @@ namespace texloom
         }
 
         // Completion is reported from the statusChanged(Ready) callback.
+#else
+        m_currentPdf = pdfPath;
+        if (m_fallbackLabel)
+        {
+            m_fallbackLabel->setText(tr("PDF Preview (fallback mode):\n\n%1\n\nInstall Qt6 Pdf/PdfWidgets for embedded rendering.")
+                                         .arg(fileInfo.fileName()));
+        }
+        emit pdfLoaded(pdfPath);
+#endif
 
         return true;
     }
 
     void PreviewWidget::clear()
     {
+#if TEXLOOM_HAS_QT_PDF
         m_pdfDocument->close();
         m_pendingPdfPath.clear();
         m_currentPdf.clear();
         updateNavigationUi();
         setStatusMessage(tr("No PDF loaded"));
+#else
+        m_currentPdf.clear();
+        if (m_fallbackLabel)
+        {
+            m_fallbackLabel->setText(tr("PDF preview unavailable\n\nInstall Qt6 Pdf/PdfWidgets to enable embedded preview."));
+        }
+#endif
     }
 
     void PreviewWidget::updateNavigationUi()
     {
+#if TEXLOOM_HAS_QT_PDF
         const int pageCount = m_pdfDocument->pageCount();
         const int currentPage = m_pdfView->pageNavigator()->currentPage();
 
@@ -188,11 +219,15 @@ namespace texloom
         m_zoomOutButton->setEnabled(hasPages);
         m_fitWidthButton->setEnabled(hasPages);
         m_fitPageButton->setEnabled(hasPages);
+#endif
     }
 
     void PreviewWidget::setStatusMessage(const QString &message)
     {
-        m_statusLabel->setText(message);
+        if (m_statusLabel)
+        {
+            m_statusLabel->setText(message);
+        }
     }
 
 } // namespace texloom

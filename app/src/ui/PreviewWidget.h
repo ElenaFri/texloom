@@ -62,6 +62,7 @@ namespace texloom
         QToolButton *m_fitPageButton = nullptr;
 
         QLabel *m_statusLabel = nullptr;
+        QLabel *m_fallbackLabel = nullptr;
     };
 
 } // namespace texloom

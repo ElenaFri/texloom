@@ -134,8 +134,13 @@ private slots:
 
     void testNavigationAndZoomControlsExist()
     {
+#if TEXLOOM_HAS_QT_PDF
         const QList<QToolButton *> buttons = m_widget->findChildren<QToolButton *>();
         QVERIFY(buttons.size() >= 6);
+#else
+        const QList<QToolButton *> buttons = m_widget->findChildren<QToolButton *>();
+        QCOMPARE(buttons.size(), 0);
+#endif
     }
 
 private:

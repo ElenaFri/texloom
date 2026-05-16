@@ -43,9 +43,16 @@ find_package(Qt6 6.4 REQUIRED COMPONENTS
     Core
     Widgets
     Concurrent
-    Pdf
-    PdfWidgets
 )
+
+# Optional: embedded PDF preview with QPdfView
+find_package(Qt6 COMPONENTS Pdf PdfWidgets QUIET)
+if(TARGET Qt6::Pdf AND TARGET Qt6::PdfWidgets)
+    set(TEXLOOM_HAS_QT_PDF ON)
+else()
+    set(TEXLOOM_HAS_QT_PDF OFF)
+    message(WARNING "Qt6 Pdf/PdfWidgets not found: PreviewWidget will use fallback mode (no embedded PDF rendering)")
+endif()
 
 # Find Qt6 Test (optional, for testing)
 find_package(Qt6 COMPONENTS Test QUIET)
@@ -145,13 +152,22 @@ target_include_directories(texloom_ui PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core
 )
 
+target_compile_definitions(texloom_ui PUBLIC
+    TEXLOOM_HAS_QT_PDF=$<BOOL:${TEXLOOM_HAS_QT_PDF}>
+)
+
 target_link_libraries(texloom_ui PUBLIC
     texloom_core
     Qt6::Core
     Qt6::Widgets
-    Qt6::Pdf
-    Qt6::PdfWidgets
 )
+
+if(TEXLOOM_HAS_QT_PDF)
+    target_link_libraries(texloom_ui PUBLIC
+        Qt6::Pdf
+        Qt6::PdfWidgets
+    )
+endif()
 
 # Create executable
 add_executable(texloom
@@ -180,9 +196,14 @@ target_link_libraries(texloom PRIVATE
     Qt6::Core
     Qt6::Widgets
     Qt6::Concurrent
-    Qt6::Pdf
-    Qt6::PdfWidgets
 )
+
+if(TEXLOOM_HAS_QT_PDF)
+    target_link_libraries(texloom PRIVATE
+        Qt6::Pdf
+        Qt6::PdfWidgets
+    )
+endif()
 
 # Platform-specific settings
 if(WIN32)
