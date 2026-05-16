@@ -1,3 +1,5 @@
+#include <QAbstractButton>
+#include <QMessageBox>
 #include <QtTest/QtTest>
 #include <QSignalSpy>
 #include <QTabWidget>
@@ -603,6 +605,91 @@ private slots:
         QMetaObject::invokeMethod(&w, "onCompileAndPreview");
     }
 
+    void testCompilePdfAutoSavesModifiedEditor()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString projFile = createTempProject(dir);
+        model(w)->loadProject(projFile);
+
+        const QString filePath = dir.path() + "/chapters/chapter1.md";
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, filePath));
+        QCOMPARE(tabs(w)->count(), 1);
+
+        auto *editor = qobject_cast<EditorWidget *>(tabs(w)->widget(0));
+        QVERIFY(editor != nullptr);
+
+        // Append text to produce unsaved changes
+        QTextCursor cursor = editor->textCursor();
+        cursor.movePosition(QTextCursor::End);
+        cursor.insertText("\n\nAdded by compilePdf test");
+        QVERIFY(editor->isModified());
+
+        // Trigger compile: auto-save must happen before convertAll is called
+        QMetaObject::invokeMethod(&w, "onCompilePdf");
+
+        // Editor must no longer be marked modified
+        QVERIFY(!editor->isModified());
+
+        // The on-disk content must include the appended text
+        QFile f(filePath);
+        QVERIFY(f.open(QIODevice::ReadOnly | QIODevice::Text));
+        const QString diskContent = QString::fromUtf8(f.readAll());
+        QVERIFY(diskContent.contains("Added by compilePdf test"));
+    }
+
+    void testConvertToLatexAutoSavesModifiedEditor()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString projFile = createTempProject(dir);
+        model(w)->loadProject(projFile);
+
+        const QString filePath = dir.path() + "/chapters/chapter1.md";
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, filePath));
+
+        auto *editor = qobject_cast<EditorWidget *>(tabs(w)->widget(0));
+        QVERIFY(editor != nullptr);
+
+        QTextCursor cursor = editor->textCursor();
+        cursor.movePosition(QTextCursor::End);
+        cursor.insertText("\n\nAdded by convertToLatex test");
+        QVERIFY(editor->isModified());
+
+        QMetaObject::invokeMethod(&w, "onConvertToLatex");
+
+        QVERIFY(!editor->isModified());
+
+        QFile f(filePath);
+        QVERIFY(f.open(QIODevice::ReadOnly | QIODevice::Text));
+        const QString diskContent = QString::fromUtf8(f.readAll());
+        QVERIFY(diskContent.contains("Added by convertToLatex test"));
+    }
+
+    void testCompilePdfUsesProjectTemplate()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString projFile = createTempProject(dir);
+        model(w)->loadProject(projFile);
+        // Set a template name — applyProjectTemplate() will silently no-op if
+        // the .latex file is not found in the test environment, which is fine.
+        model(w)->setTemplateName("article");
+
+        const QString filePath = dir.path() + "/chapters/chapter1.md";
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, filePath));
+        QCOMPARE(tabs(w)->count(), 1);
+
+        // Must not crash regardless of whether the template file is found
+        QMetaObject::invokeMethod(&w, "onCompilePdf");
+
+        // The engine must have started the conversion pipeline
+        QVERIFY(engine(w)->isBusy());
+    }
+
     // ========== CONVERSION SIGNALS ==========
 
     void testConversionStartedShowsLog()
@@ -936,6 +1023,213 @@ private slots:
 
         editor->document()->setModified(false);
         QVERIFY(!tabs(w)->tabText(0).contains("*"));
+    }
+
+    // ========== SLOT GUARD BRANCHES (no-project / no-item) ==========
+
+    void testQuitNoProject()
+    {
+        // onQuit() → close() → closeEvent() → maybeSave() returns true immediately
+        // (no modified project) → event->accept()
+        MainWindow w;
+        QMetaObject::invokeMethod(&w, "onQuit");
+        // No crash, closeEvent accepted
+    }
+
+    void testNewMarkdownFileNoProject()
+    {
+        MainWindow w;
+        QMetaObject::invokeMethod(&w, "onNewMarkdownFile");
+        QVERIFY(w.statusBar()->currentMessage().contains("No project open"));
+    }
+
+    void testAddExistingFileNoProject()
+    {
+        MainWindow w;
+        QMetaObject::invokeMethod(&w, "onAddExistingFile");
+        QVERIFY(w.statusBar()->currentMessage().contains("No project open"));
+    }
+
+    void testRemoveFileNoProject()
+    {
+        MainWindow w;
+        QMetaObject::invokeMethod(&w, "onRemoveFile");
+        QVERIFY(w.statusBar()->currentMessage().contains("No project open"));
+    }
+
+    void testRemoveFileNoCurrentItem()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        model(w)->loadProject(createTempProject(dir));
+
+        tree(w)->setCurrentItem(nullptr);
+        QMetaObject::invokeMethod(&w, "onRemoveFile");
+        QVERIFY(w.statusBar()->currentMessage().contains("No file selected"));
+    }
+
+    void testRemoveFileRootItemHasNoFilePath()
+    {
+        // Root item carries only the project name — no UserRole filepath
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        model(w)->loadProject(createTempProject(dir));
+
+        QTreeWidgetItem *root = tree(w)->topLevelItem(0);
+        QVERIFY(root != nullptr);
+        tree(w)->setCurrentItem(root);
+        QMetaObject::invokeMethod(&w, "onRemoveFile");
+        QVERIFY(w.statusBar()->currentMessage().contains("Select a file to remove"));
+    }
+
+    void testRemoveFileClosesOpenTab()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        model(w)->loadProject(createTempProject(dir));
+
+        const QString filePath = dir.path() + "/chapters/chapter1.md";
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, filePath));
+        QCOMPARE(tabs(w)->count(), 1);
+
+        // Select the file's tree item so onRemoveFile can find it
+        QTreeWidgetItem *root = tree(w)->topLevelItem(0);
+        QVERIFY(root != nullptr && root->childCount() > 0);
+        tree(w)->setCurrentItem(root->child(0));
+
+        QMetaObject::invokeMethod(&w, "onRemoveFile");
+
+        QCOMPARE(tabs(w)->count(), 0);
+        QVERIFY(!model(w)->files().contains(filePath));
+    }
+
+    // ========== onTabCloseRequested BRANCHES ==========
+
+    void testTabCloseNoWidget()
+    {
+        // index 0 with no tabs → widget(0) = nullptr → early return
+        MainWindow w;
+        QMetaObject::invokeMethod(&w, "onTabCloseRequested", Q_ARG(int, 0));
+        QCOMPARE(tabs(w)->count(), 0);
+    }
+
+    void testTabCloseModifiedFileDiscard()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        model(w)->loadProject(createTempProject(dir));
+
+        const QString filePath = dir.path() + "/chapters/chapter1.md";
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, filePath));
+        QCOMPARE(tabs(w)->count(), 1);
+
+        auto *editor = qobject_cast<EditorWidget *>(tabs(w)->widget(0));
+        QVERIFY(editor != nullptr);
+        QTextCursor cursor = editor->textCursor();
+        cursor.movePosition(QTextCursor::End);
+        cursor.insertText("unsaved change");
+        QVERIFY(editor->isModified());
+
+        // Dismiss "save changes?" dialog by clicking Discard
+        QTimer::singleShot(0, []()
+                           {
+            auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+            if (box) {
+                QAbstractButton *btn = box->button(QMessageBox::Discard);
+                if (btn)
+                    btn->click();
+            } });
+
+        QMetaObject::invokeMethod(&w, "onTabCloseRequested", Q_ARG(int, 0));
+        QCOMPARE(tabs(w)->count(), 0);
+    }
+
+    // ========== onConversionFailed ==========
+
+    void testConversionFailedShowsMessageBox()
+    {
+        MainWindow w;
+
+        // Dismiss the error dialog immediately so the test doesn't block
+        QTimer::singleShot(0, []()
+                           {
+            auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+            if (box)
+                box->accept(); });
+
+        QMetaObject::invokeMethod(&w, "onConversionFailed",
+                                  Q_ARG(QString, "pandoc: file not found"));
+
+        QVERIFY(w.statusBar()->currentMessage().contains("pandoc: file not found"));
+    }
+
+    // ========== SAVE FAILURE BEFORE COMPILE / CONVERT ==========
+
+    void testCompilePdfCannotSaveFile()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+
+        const QString filePath = dir.path() + "/compile_test.md";
+        QFile f(filePath);
+        QVERIFY(f.open(QIODevice::WriteOnly | QIODevice::Text));
+        f.write("# Test\n");
+        f.close();
+
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, filePath));
+        QCOMPARE(tabs(w)->count(), 1);
+
+        auto *editor = qobject_cast<EditorWidget *>(tabs(w)->widget(0));
+        QVERIFY(editor != nullptr);
+        QTextCursor cursor = editor->textCursor();
+        cursor.movePosition(QTextCursor::End);
+        cursor.insertText(" modified");
+        QVERIFY(editor->isModified());
+
+        // Make file unwritable to force saveFile() → false
+        QFile::setPermissions(filePath, QFile::ReadOwner | QFile::ReadUser);
+        QMetaObject::invokeMethod(&w, "onCompilePdf");
+        QFile::setPermissions(filePath,
+                              QFile::ReadOwner | QFile::WriteOwner |
+                                  QFile::ReadUser | QFile::WriteUser);
+
+        QVERIFY(w.statusBar()->currentMessage().contains("Cannot save file before compiling"));
+    }
+
+    void testConvertToLatexCannotSaveFile()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+
+        const QString filePath = dir.path() + "/convert_test.md";
+        QFile f(filePath);
+        QVERIFY(f.open(QIODevice::WriteOnly | QIODevice::Text));
+        f.write("# Test\n");
+        f.close();
+
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, filePath));
+        QCOMPARE(tabs(w)->count(), 1);
+
+        auto *editor = qobject_cast<EditorWidget *>(tabs(w)->widget(0));
+        QVERIFY(editor != nullptr);
+        QTextCursor cursor = editor->textCursor();
+        cursor.movePosition(QTextCursor::End);
+        cursor.insertText(" modified");
+        QVERIFY(editor->isModified());
+
+        QFile::setPermissions(filePath, QFile::ReadOwner | QFile::ReadUser);
+        QMetaObject::invokeMethod(&w, "onConvertToLatex");
+        QFile::setPermissions(filePath,
+                              QFile::ReadOwner | QFile::WriteOwner |
+                                  QFile::ReadUser | QFile::WriteUser);
+
+        QVERIFY(w.statusBar()->currentMessage().contains("Cannot save file before converting"));
     }
 };
 
