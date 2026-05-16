@@ -1,4 +1,6 @@
 #include "EditorWidget.h"
+#include "MarkdownHighlighter.h"
+
 #include <QFile>
 #include <QTextStream>
 #include <QFileInfo>
@@ -11,6 +13,7 @@ namespace texloom
     {
         // Basic editor setup
         setLineWrapMode(QPlainTextEdit::WidgetWidth);
+        m_highlighter = new MarkdownHighlighter(document());
 
         // Connect modification signal
         connect(document(), &QTextDocument::modificationChanged,

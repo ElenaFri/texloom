@@ -2,6 +2,8 @@
 #include <QTemporaryDir>
 #include <QSignalSpy>
 #include <QFile>
+#include <QTextBlock>
+#include <QTextLayout>
 #include <QTextStream>
 #include "../src/ui/EditorWidget.h"
 
@@ -11,7 +13,24 @@ class TestEditorWidget : public QObject
 {
     Q_OBJECT
 
+private:
+    static bool blockHasFormat(const QTextBlock &block,
+                               const std::function<bool(const QTextLayout::FormatRange &)> &predicate)
+    {
+        const QList<QTextLayout::FormatRange> formats = block.layout()->formats();
+        for (const QTextLayout::FormatRange &formatRange : formats)
+        {
+            if (predicate(formatRange))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 private slots:
+
     void init()
     {
         m_tempDir = new QTemporaryDir();
@@ -228,6 +247,57 @@ private slots:
         QCOMPARE(editor2->toPlainText(), unicodeContent);
 
         delete editor2;
+    }
+
+    void testHeadingHighlighting()
+    {
+        m_editor->setPlainText("# Heading 1\n## Heading 2\n### Heading 3\n");
+
+        const QTextBlock first = m_editor->document()->findBlockByNumber(0);
+        const QTextBlock second = m_editor->document()->findBlockByNumber(1);
+        const QTextBlock third = m_editor->document()->findBlockByNumber(2);
+
+        QVERIFY(blockHasFormat(first, [](const QTextLayout::FormatRange &range)
+                               { return range.format.fontWeight() == QFont::Bold; }));
+        QVERIFY(blockHasFormat(second, [](const QTextLayout::FormatRange &range)
+                               { return range.format.fontWeight() == QFont::Bold; }));
+        QVERIFY(blockHasFormat(third, [](const QTextLayout::FormatRange &range)
+                               { return range.format.fontWeight() == QFont::DemiBold; }));
+    }
+
+    void testBoldItalicInlineCodeAndLinkHighlighting()
+    {
+        m_editor->setPlainText("**bold** *italic* `code` [link](https://example.com)");
+
+        const QTextBlock block = m_editor->document()->firstBlock();
+
+        QVERIFY(blockHasFormat(block, [](const QTextLayout::FormatRange &range)
+                               { return range.format.fontWeight() == QFont::Bold; }));
+        QVERIFY(blockHasFormat(block, [](const QTextLayout::FormatRange &range)
+                               { return range.format.fontItalic(); }));
+        QVERIFY(blockHasFormat(block, [](const QTextLayout::FormatRange &range)
+                               { return range.format.background().style() != Qt::NoBrush; }));
+        QVERIFY(blockHasFormat(block, [](const QTextLayout::FormatRange &range)
+                               { return range.format.fontUnderline(); }));
+    }
+
+    void testCodeBlockHighlighting()
+    {
+        m_editor->setPlainText("```cpp\nint main() { return 0; }\n```\nplain text\n");
+
+        const QTextBlock fenceStart = m_editor->document()->findBlockByNumber(0);
+        const QTextBlock codeLine = m_editor->document()->findBlockByNumber(1);
+        const QTextBlock fenceEnd = m_editor->document()->findBlockByNumber(2);
+        const QTextBlock plainLine = m_editor->document()->findBlockByNumber(3);
+
+        QVERIFY(blockHasFormat(fenceStart, [](const QTextLayout::FormatRange &range)
+                               { return range.format.background().style() != Qt::NoBrush; }));
+        QVERIFY(blockHasFormat(codeLine, [](const QTextLayout::FormatRange &range)
+                               { return range.format.background().style() != Qt::NoBrush; }));
+        QVERIFY(blockHasFormat(fenceEnd, [](const QTextLayout::FormatRange &range)
+                               { return range.format.background().style() != Qt::NoBrush; }));
+        QVERIFY(!blockHasFormat(plainLine, [](const QTextLayout::FormatRange &range)
+                                { return range.format.background().style() != Qt::NoBrush; }));
     }
 
 private:
