@@ -17,7 +17,7 @@
   - [x] Code mode (raw Markdown) — `EditorWidget` implemented
   - [ ] WYSIWYG mode (visual editing)
 - [x] Conversion: Pandoc => LaTeX => PDF pipeline (ConversionEngine implemented, auto-save + template wiring done)
-- [ ] Preview: embedded PDF viewer (placeholder — filename only)
+- [x] Preview: embedded PDF viewer (QPdfView integration with zoom controls and page navigation)
 - [x] Project manager: `.md` file list/tree (`ProjectModel` + `ProjectTreeWidget`)
 
 ## GUI

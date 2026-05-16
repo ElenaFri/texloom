@@ -33,6 +33,7 @@ case $DISTRO in
             git \
             qt6-base-dev \
             qt6-base-dev-tools \
+            qt6-pdf-dev \
             pandoc \
             texlive-xetex \
             texlive-latex-base \
@@ -51,6 +52,7 @@ case $DISTRO in
             gcc-c++ \
             git \
             qt6-qtbase-devel \
+            qt6-qtpdf-devel \
             pandoc \
             texlive-xetex \
             texlive-collection-fontsrecommended \
@@ -67,6 +69,7 @@ case $DISTRO in
             cmake \
             git \
             qt6-base \
+            qt6-pdf \
             pandoc \
             texlive-xetex \
             texlive-fontsrecommended \
@@ -114,10 +117,8 @@ if [ "$ALL_GOOD" = true ]; then
     echo "==================================="
     echo ""
     echo "You can now build TexLoom:"
-    echo "  cd app"
-    echo "  mkdir build && cd build"
-    echo "  cmake .."
-    echo "  cmake --build ."
+    echo "  cmake -B app/build -S app"
+    echo "  cmake --build app/build -j\$(nproc)"
 else
     echo "==================================="
     echo "✗ Some dependencies are missing."

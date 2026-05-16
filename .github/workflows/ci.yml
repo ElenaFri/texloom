@@ -74,6 +74,9 @@ jobs:
           cmake \
           qt6-base-dev \
           qt6-base-dev-tools \
+          qt6-pdf-dev \
+          libxkbcommon-dev \
+          libxkbcommon-x11-dev \
           xvfb \
           valgrind \
           lcov \
