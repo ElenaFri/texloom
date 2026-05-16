@@ -617,6 +617,85 @@ private slots:
         QVERIFY(!m_engine->isBusy());
     }
 
+    // ========== TEXLOOM TEMPLATE INTEGRATION TESTS ==========
+    // These tests run the full Markdown → PDF pipeline using the actual
+    // TexLoom .latex templates (article, report, thesis).
+    // They are skipped automatically when pandoc or xelatex are not installed.
+
+    bool isXelatexAvailable()
+    {
+        QProcess p;
+        p.start("xelatex", QStringList{"--version"});
+        return p.waitForFinished(3000) && p.exitCode() == 0;
+    }
+
+    void runTemplateTest(const QString &templateName, const QString &outputBaseName)
+    {
+        if (!isPandocAvailable())
+            QSKIP("Pandoc not installed");
+        if (!isXelatexAvailable())
+            QSKIP("XeLaTeX not installed");
+
+        // QFINDTESTDATA searches from the test source file directory
+        // (app/tests/) so "../resources/templates/<name>.latex" is correct.
+        const QString templatePath =
+            QFINDTESTDATA("../resources/templates/" + templateName + ".latex");
+        if (templatePath.isEmpty())
+            QSKIP(qPrintable(templateName + ".latex template not found in repository"));
+
+        m_engine->setTemplatePath(templatePath);
+
+        const QString mdFile = createTestMarkdownFile();
+        QVERIFY(!mdFile.isEmpty());
+
+        const QString pdfFile = m_tempDir->path() + "/" + outputBaseName + ".pdf";
+
+        QSignalSpy spyCompleted(m_engine, &ConversionEngine::conversionCompleted);
+        QSignalSpy spyFailed(m_engine, &ConversionEngine::conversionFailed);
+        QSignalSpy spyProgress(m_engine, &ConversionEngine::conversionProgress);
+
+        m_engine->convertAll(mdFile, pdfFile);
+        QVERIFY(m_engine->isBusy());
+
+        // Wait up to 90 s — complex templates with fontspec can be slow on first run
+        bool finished = false;
+        for (int i = 0; i < 90 && !finished; ++i)
+        {
+            finished = spyCompleted.count() > 0 || spyFailed.count() > 0;
+            if (!finished)
+                QTest::qWait(1000);
+        }
+
+        if (spyFailed.count() > 0)
+        {
+            // Print progress for easier debugging
+            for (int i = 0; i < spyProgress.count(); ++i)
+                qWarning() << "Progress:" << spyProgress.at(i).at(0).toString();
+            QFAIL(qPrintable(templateName + " template conversion failed: " +
+                             spyFailed.at(0).at(0).toString()));
+        }
+
+        QVERIFY2(finished, qPrintable(templateName + " template conversion timed out"));
+        QCOMPARE(spyCompleted.count(), 1);
+        QVERIFY(QFile::exists(pdfFile));
+        QVERIFY(!m_engine->isBusy());
+    }
+
+    void testConvertAllWithArticleTemplate()
+    {
+        runTemplateTest("article", "output_article");
+    }
+
+    void testConvertAllWithReportTemplate()
+    {
+        runTemplateTest("report", "output_report");
+    }
+
+    void testConvertAllWithThesisTemplate()
+    {
+        runTemplateTest("thesis", "output_thesis");
+    }
+
 private:
     QTemporaryDir *m_tempDir;
     ConversionEngine *m_engine;

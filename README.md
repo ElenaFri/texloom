@@ -21,9 +21,8 @@ Compile the application with CMake:
 
 ```bash
 cd app
-mkdir build && cd build
-cmake ..
-cmake --build .
+cmake -B build
+cmake --build build -j$(nproc)
 ```
 
 ## Run
@@ -31,8 +30,7 @@ cmake --build .
 Launch the application:
 
 ```bash
-# From app/build/
-./bin/texloom
+./app/build/bin/texloom
 ```
 
 ## Tests
@@ -40,6 +38,5 @@ Launch the application:
 Run the test suite:
 
 ```bash
-# From app/build/
-ctest
+ctest --test-dir app/build --output-on-failure
 ```

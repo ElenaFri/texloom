@@ -1,24 +1,24 @@
 # TexLoom — Roadmap
 
-## Core differentiators to implement
+## Core features to implement
 
-- [ ] Multi-file project support (book, thesis, report)
+- [x] Multi-file project support (book, thesis, report)
 - [ ] Real-time PDF preview
-- [ ] Integrated LaTeX templates (easy to configure)
+- [x] Integrated LaTeX templates (easy to configure) — article, report, thesis
 - [ ] Simple bibliography management (BibTeX)
 - [ ] Clean export for scientific articles and reports
-- [ ] Fast, stable compilation pipeline
+- [x] Fast, stable compilation pipeline (Pandoc + XeLaTeX, async, fully tested)
 - [ ] Multi-language support (English and French, to begin with)
 
 ## Architecture
 
 - [x] GUI: Qt (C++)
 - [ ] Editor: text component with Markdown syntax highlighting
-  - Code mode (raw Markdown)
-  - WYSIWYG mode (visual editing)
-- [x] Conversion: Pandoc => LaTeX => PDF pipeline (ConversionEngine implemented)
-- [ ] Preview: embedded PDF viewer
-- [ ] Project manager: `.md` file list/tree
+  - [x] Code mode (raw Markdown) — `EditorWidget` implemented
+  - [ ] WYSIWYG mode (visual editing)
+- [x] Conversion: Pandoc => LaTeX => PDF pipeline (ConversionEngine implemented, auto-save + template wiring done)
+- [ ] Preview: embedded PDF viewer (placeholder — filename only)
+- [x] Project manager: `.md` file list/tree (`ProjectModel` + `ProjectTreeWidget`)
 
 ## GUI
 

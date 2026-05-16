@@ -106,6 +106,12 @@ namespace texloom
 
         bool maybeSave();
 
+        // Apply the project's selected template to the conversion engine.
+        // Resolves the .latex file relative to the application binary and sets
+        // it on the engine; clears the template path when none is configured or
+        // the file cannot be found.
+        void applyProjectTemplate();
+
         // Core components
         ProjectModel *m_projectModel = nullptr;
         ConversionEngine *m_conversionEngine = nullptr;

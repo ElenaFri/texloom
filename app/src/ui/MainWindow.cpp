@@ -562,6 +562,23 @@ namespace texloom
             editor->setEditorMode(EditorWidget::Mode::Wysiwyg);
     }
 
+    void MainWindow::applyProjectTemplate()
+    {
+        const QString templateName = m_projectModel->templateName();
+        if (templateName.isEmpty())
+        {
+            m_conversionEngine->setTemplatePath(QString{});
+            return;
+        }
+
+        const QString templatePath = QDir(
+                                         QCoreApplication::applicationDirPath() + "/../../resources/templates")
+                                         .filePath(templateName + ".latex");
+
+        m_conversionEngine->setTemplatePath(
+            QFileInfo::exists(templatePath) ? templatePath : QString{});
+    }
+
     void MainWindow::onConvertToLatex()
     {
         auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->currentWidget());
@@ -570,6 +587,14 @@ namespace texloom
             statusBar()->showMessage(tr("No file open to convert"), 3000);
             return;
         }
+
+        if (editor->isModified() && !editor->saveFile())
+        {
+            statusBar()->showMessage(tr("Cannot save file before converting"), 5000);
+            return;
+        }
+
+        applyProjectTemplate();
 
         QString mdFile = editor->currentFile();
         QString latexFile = QFileInfo(mdFile).absolutePath() + "/" +
@@ -585,6 +610,14 @@ namespace texloom
             statusBar()->showMessage(tr("No file open to compile"), 3000);
             return;
         }
+
+        if (editor->isModified() && !editor->saveFile())
+        {
+            statusBar()->showMessage(tr("Cannot save file before compiling"), 5000);
+            return;
+        }
+
+        applyProjectTemplate();
 
         QString mdFile = editor->currentFile();
         QString pdfFile = QFileInfo(mdFile).absolutePath() + "/" +
