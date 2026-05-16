@@ -9,9 +9,8 @@ namespace texloom
         : QTreeWidget(parent)
     {
         setHeaderLabel(tr("Project"));
-        setColumnCount(1);
         setRootIsDecorated(false);
-        setIndentation(14);
+        setIndentation(10); // Slight indentation to visually distinguish child files from the project root
 
         connect(this, &QTreeWidget::itemClicked,
                 this, &ProjectTreeWidget::onItemClicked);
@@ -28,8 +27,6 @@ namespace texloom
         m_rootItem->setText(0, name);
         m_rootItem->setIcon(0, style()->standardIcon(QStyle::SP_DirIcon));
         m_rootItem->setExpanded(true);
-
-        addTopLevelItem(m_rootItem);
     }
 
     void ProjectTreeWidget::addFile(const QString &filePath)
@@ -44,25 +41,7 @@ namespace texloom
         fileItem->setText(0, fileInfo.fileName());
         fileItem->setData(0, Qt::UserRole, filePath);
 
-        QIcon fileIcon;
-        if (fileInfo.suffix().compare("md", Qt::CaseInsensitive) == 0)
-        {
-            fileIcon = style()->standardIcon(QStyle::SP_FileIcon);
-        }
-        else if (fileInfo.suffix().compare("tex", Qt::CaseInsensitive) == 0)
-        {
-            fileIcon = style()->standardIcon(QStyle::SP_FileIcon);
-        }
-        else if (fileInfo.suffix().compare("bib", Qt::CaseInsensitive) == 0)
-        {
-            fileIcon = style()->standardIcon(QStyle::SP_FileIcon);
-        }
-        else
-        {
-            fileIcon = style()->standardIcon(QStyle::SP_FileIcon);
-        }
-
-        fileItem->setIcon(0, fileIcon);
+        fileItem->setIcon(0, style()->standardIcon(QStyle::SP_FileIcon));
     }
 
     void ProjectTreeWidget::removeFile(const QString &filePath)

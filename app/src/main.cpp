@@ -1,23 +1,22 @@
 #include <QApplication>
 #include <QByteArray>
-#include <QProcessEnvironment>
+#include <QSettings>
 #include "ui/MainWindow.h"
 
 int main(int argc, char *argv[])
 {
-    // Prevent noisy Gtk-WARNING theme parse errors on systems with
-    // malformed custom GTK themes. Respect explicit user settings.
-    if (qEnvironmentVariableIsEmpty("GTK_THEME"))
-    {
-        qputenv("GTK_THEME", QByteArray("Adwaita"));
-    }
+    // Apply persisted GTK theme early (before QApplication), as platform theme
+    // plugins are initialized at startup time.
+    QSettings settings;
+    settings.beginGroup(QStringLiteral("appearance"));
+    const QString themeType = settings.value(QStringLiteral("themeType")).toString();
+    const QString themeValue = settings.value(QStringLiteral("themeValue")).toString();
+    settings.endGroup();
 
-    // Some Linux themes ship malformed gtk.css that trigger noisy Gtk-WARNING
-    // messages when Qt picks the GTK platform theme. Keep explicit user choice,
-    // otherwise default to a non-GTK platform theme.
-    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORMTHEME"))
+    if (themeType == QStringLiteral("gtk") && !themeValue.isEmpty())
     {
-        qputenv("QT_QPA_PLATFORMTHEME", QByteArray("xdgdesktopportal"));
+        qputenv("GTK_THEME", themeValue.toUtf8());
+        qputenv("QT_QPA_PLATFORMTHEME", QByteArray("gtk3"));
     }
 
     QApplication app(argc, argv);

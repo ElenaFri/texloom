@@ -34,6 +34,7 @@ case $DISTRO in
             qt6-base-dev \
             qt6-base-dev-tools \
             qt6-pdf-dev \
+            qgnomeplatform-qt6 \
             pandoc \
             texlive-xetex \
             texlive-latex-base \
@@ -53,6 +54,7 @@ case $DISTRO in
             git \
             qt6-qtbase-devel \
             qt6-qtpdf-devel \
+            qgnomeplatform-qt6 \
             pandoc \
             texlive-xetex \
             texlive-collection-fontsrecommended \
@@ -70,6 +72,7 @@ case $DISTRO in
             git \
             qt6-base \
             qt6-pdf \
+            qgnomeplatform-qt6 \
             pandoc \
             texlive-xetex \
             texlive-fontsrecommended \

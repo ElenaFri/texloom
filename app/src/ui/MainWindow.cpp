@@ -26,6 +26,12 @@
 #include <QFrame>
 #include <QPushButton>
 #include <QToolButton>
+#include <QApplication>
+#include <QStyleFactory>
+#include <QMenu>
+#include <QSet>
+#include <QSettings>
+#include <QProcess>
 
 namespace texloom
 {
@@ -33,6 +39,8 @@ namespace texloom
     MainWindow::MainWindow(QWidget *parent)
         : QMainWindow(parent)
     {
+        m_systemStyleName = QApplication::style()->objectName();
+
         // Create core components
         m_projectModel = new ProjectModel(this);
         m_conversionEngine = new ConversionEngine(this);
@@ -43,28 +51,7 @@ namespace texloom
         createMenus();
         createToolbar();
         createStatusBar();
-
-        setStyleSheet(
-            "QMainWindow { background: #f6f7f9; }"
-            "QMenuBar { background: #f3f4f7; border-bottom: 1px solid #d9dde3; }"
-            "QMenuBar::item { padding: 8px 10px; color: #39414f; }"
-            "QToolBar { background: #f7f8fa; border: none; border-bottom: 1px solid #d9dde3; spacing: 6px; padding: 6px 8px; }"
-            "QToolButton { background: #ffffff; border: 1px solid #ccd2da; border-radius: 6px; padding: 7px 12px; color: #2f3641; }"
-            "QToolButton:hover { background: #f1f4f8; }"
-            "QToolButton:pressed { background: #e7edf6; }"
-            "QToolButton:disabled { color: #a6acb5; background: #f7f8fa; }"
-            "QTabWidget::pane { border: 1px solid #d9dde3; background: #ffffff; border-radius: 8px; }"
-            "QTabBar::tab { background: #f0f3f8; border: 1px solid #d9dde3; border-bottom: none; border-top: 3px solid transparent; padding: 8px 14px; margin-right: 4px; border-top-left-radius: 6px; border-top-right-radius: 6px; }"
-            "QTabBar::tab:selected { background: #ffffff; color: #1e5cb3; font-weight: 600; border-top: 3px solid #1e5cb3; }"
-            "QFrame#panelCard { background: #ffffff; border: 1px solid #d9dde3; border-radius: 8px; }"
-            "QFrame#sectionCard { background: #ffffff; border: 1px solid #d9dde3; border-radius: 8px; }"
-            "QLabel#panelTitle { color: #2e3745; font-size: 22px; font-weight: 600; padding: 6px 2px; }"
-            "QLabel#statusValue { color: #2e3745; font-weight: 600; }"
-            "QStatusBar { background: #f7f8fa; border-top: 1px solid #d9dde3; color: #536072; }"
-            "QTreeWidget { border: none; background: transparent; }"
-            "QTreeView::branch { border-image: none; image: none; }"
-            "QTreeWidget::item { height: 28px; border-radius: 5px; }"
-            "QTreeWidget::item:selected { background: #e7effa; color: #1f2937; }");
+        applySavedThemeOrSystemDefault();
 
         // Connect signals
         connect(m_projectModel, &ProjectModel::projectOpened,
@@ -179,9 +166,8 @@ namespace texloom
         statusLayout->addLayout(statusGrid);
 
         auto *openPdfButton = new QPushButton(tr("Open PDF"), statusCard);
+        openPdfButton->setObjectName("primaryButton");
         openPdfButton->setMinimumHeight(36);
-        openPdfButton->setStyleSheet("QPushButton { background: #1557bf; color: white; border: none; border-radius: 6px; font-weight: 600; }"
-                                     "QPushButton:hover { background: #0f49a1; }");
         statusLayout->addWidget(openPdfButton);
 
         leftLayout->addWidget(statusCard, 0);
@@ -421,12 +407,247 @@ namespace texloom
 
         auto *themeButton = new QToolButton(toolbar);
         themeButton->setText(tr("Theme"));
+        themeButton->setPopupMode(QToolButton::InstantPopup);
+
+        auto *themeMenu = new QMenu(themeButton);
+        themeButton->setMenu(themeMenu);
+
+        auto *systemTheme = themeMenu->addAction(tr("System Default"));
+        connect(systemTheme, &QAction::triggered, this, [this]()
+                {
+            applyQtStyleTheme(m_systemStyleName);
+                setStyleSheet(QString());
+                refreshOpenEditorSyntaxThemes();
+                saveThemePreference(QStringLiteral("system"), QString());
+                statusBar()->showMessage(tr("Theme applied: System Default"), 3000); });
+
+        themeMenu->addSeparator();
+
+        auto *texloomTheme = themeMenu->addAction(tr("TexLoom Light"));
+        connect(texloomTheme, &QAction::triggered, this, [this]()
+                {
+                    applyQtStyleTheme(QStringLiteral("Fusion"));
+                    applyTexLoomAppearance();
+                refreshOpenEditorSyntaxThemes();
+                saveThemePreference(QStringLiteral("texloom"), QStringLiteral("light"));
+                    statusBar()->showMessage(tr("Theme applied: TexLoom Light"), 3000); });
+
+        themeMenu->addSeparator();
+
+        QMenu *qtThemesMenu = themeMenu->addMenu(tr("Qt Styles"));
+        const QStringList qtStyles = QStyleFactory::keys();
+        for (const QString &styleName : qtStyles)
+        {
+            QAction *styleAction = qtThemesMenu->addAction(styleName);
+            connect(styleAction, &QAction::triggered, this, [this, styleName]()
+                    {
+                        applyQtStyleTheme(styleName);
+                        this->setStyleSheet(QString());
+                        refreshOpenEditorSyntaxThemes();
+                        saveThemePreference(QStringLiteral("qt"), styleName);
+                        statusBar()->showMessage(tr("Qt style applied: %1").arg(styleName), 3000); });
+        }
+
+        QMenu *gtkThemesMenu = themeMenu->addMenu(tr("GTK Themes"));
+        const QStringList gtkThemes = availableGtkThemes();
+        if (gtkThemes.isEmpty())
+        {
+            QAction *noThemeAction = gtkThemesMenu->addAction(tr("No GTK theme found"));
+            noThemeAction->setEnabled(false);
+        }
+        else
+        {
+            for (const QString &themeName : gtkThemes)
+            {
+                QAction *themeAction = gtkThemesMenu->addAction(themeName);
+                connect(themeAction, &QAction::triggered, this, [this, themeName]()
+                        {
+                            saveThemePreference(QStringLiteral("gtk"), themeName);
+
+                            const auto restart = QMessageBox::question(
+                                this,
+                                tr("Restart Required"),
+                                tr("Applying a GTK theme requires restarting TexLoom.\nRestart now?"),
+                                QMessageBox::Yes | QMessageBox::No,
+                                QMessageBox::Yes);
+
+                            if (restart == QMessageBox::Yes)
+                            {
+                                QStringList args = QCoreApplication::arguments();
+                                if (!args.isEmpty())
+                                {
+                                    args.removeFirst();
+                                }
+
+                                QProcess::startDetached(QCoreApplication::applicationFilePath(), args);
+                                QCoreApplication::quit();
+                                return;
+                            }
+
+                            statusBar()->showMessage(tr("GTK theme will be applied on next launch: %1").arg(themeName), 4000); });
+            }
+        }
+
         toolbar->addWidget(themeButton);
 
         auto *settingsButton = new QToolButton(toolbar);
         settingsButton->setText(tr("Settings"));
         connect(settingsButton, &QToolButton::clicked, this, &MainWindow::onBuildSettings);
         toolbar->addWidget(settingsButton);
+    }
+
+    void MainWindow::applyTexLoomAppearance()
+    {
+        const QPalette palette = QApplication::palette();
+        const QString windowColor = palette.color(QPalette::Window).name();
+        const QString barColor = palette.color(QPalette::AlternateBase).name();
+        const QString borderColor = palette.color(QPalette::Mid).name();
+        const QString textColor = palette.color(QPalette::WindowText).name();
+        const QString mutedTextColor = palette.color(QPalette::Mid).name();
+        const QString baseColor = palette.color(QPalette::Base).name();
+        const QString accentColor = palette.color(QPalette::Highlight).name();
+
+        setStyleSheet(
+            QStringLiteral("QMainWindow { background: %1; }"
+                           "QMenuBar { background: %2; border-bottom: 1px solid %3; }"
+                           "QMenuBar::item { padding: 8px 10px; color: %4; }"
+                           "QToolBar { background: %2; border: none; border-bottom: 1px solid %3; spacing: 6px; padding: 6px 8px; }"
+                           "QToolButton { background: %5; border: 1px solid %3; border-radius: 6px; padding: 7px 12px; color: %4; }"
+                           "QToolButton:hover { background: %2; }"
+                           "QToolButton:pressed { background: %2; }"
+                           "QToolButton:disabled { color: %6; background: %2; }"
+                           "QPushButton#primaryButton { background: %7; color: %5; border: none; border-radius: 6px; font-weight: 600; padding: 8px 12px; }"
+                           "QPushButton#primaryButton:hover { background: %7; }"
+                           "QTabWidget::pane { border: 1px solid %3; background: %5; border-radius: 8px; }"
+                           "QTabBar::tab { background: %2; border: 1px solid %3; border-bottom: none; border-top: 3px solid transparent; padding: 8px 14px; margin-right: 4px; border-top-left-radius: 6px; border-top-right-radius: 6px; }"
+                           "QTabBar::tab:selected { background: %5; color: %7; font-weight: 600; border-top: 3px solid %7; }"
+                           "QFrame#panelCard { background: %5; border: 1px solid %3; border-radius: 8px; }"
+                           "QFrame#sectionCard { background: %5; border: 1px solid %3; border-radius: 8px; }"
+                           "QLabel#panelTitle { color: %4; font-size: 22px; font-weight: 600; padding: 6px 2px; }"
+                           "QLabel#statusValue { color: %4; font-weight: 600; }"
+                           "QStatusBar { background: %2; border-top: 1px solid %3; color: %6; }"
+                           "QTreeWidget { border: none; background: transparent; }"
+                           "QTreeView::branch { border-image: none; image: none; }"
+                           "QTreeWidget::item { height: 28px; border-radius: 5px; }"
+                           "QTreeWidget::item:selected { background: %7; color: %5; border: 1px solid %3; padding-left: 0; margin-left: 0; background-clip: content-box; }")
+                .arg(windowColor,
+                     barColor,
+                     borderColor,
+                     textColor,
+                     baseColor,
+                     mutedTextColor,
+                     accentColor));
+    }
+
+    QStringList MainWindow::availableGtkThemes() const
+    {
+        const QStringList themeRoots = {
+            QDir::homePath() + QStringLiteral("/.themes"),
+            QStringLiteral("/usr/share/themes")};
+
+        QSet<QString> themes;
+        for (const QString &rootPath : themeRoots)
+        {
+            const QDir rootDir(rootPath);
+            const QFileInfoList entries = rootDir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
+            for (const QFileInfo &entry : entries)
+            {
+                const QString gtk3Path = entry.absoluteFilePath() + QStringLiteral("/gtk-3.0");
+                const QString gtk4Path = entry.absoluteFilePath() + QStringLiteral("/gtk-4.0");
+                if (QFileInfo::exists(gtk3Path) || QFileInfo::exists(gtk4Path))
+                {
+                    themes.insert(entry.fileName());
+                }
+            }
+        }
+
+        QStringList result = themes.values();
+        result.sort(Qt::CaseInsensitive);
+        return result;
+    }
+
+    void MainWindow::applyQtStyleTheme(const QString &styleName)
+    {
+        if (!QStyleFactory::keys().contains(styleName, Qt::CaseInsensitive))
+        {
+            return;
+        }
+
+        if (QStyle *style = QStyleFactory::create(styleName))
+        {
+            QApplication::setStyle(style);
+        }
+    }
+
+    void MainWindow::applyGtkTheme(const QString &themeName)
+    {
+        qputenv("GTK_THEME", themeName.toUtf8());
+    }
+
+    void MainWindow::saveThemePreference(const QString &themeType, const QString &themeValue)
+    {
+        QSettings settings;
+        settings.beginGroup(QStringLiteral("appearance"));
+        settings.setValue(QStringLiteral("themeType"), themeType);
+        settings.setValue(QStringLiteral("themeValue"), themeValue);
+        settings.endGroup();
+    }
+
+    void MainWindow::applySavedThemeOrSystemDefault()
+    {
+        QSettings settings;
+        settings.beginGroup(QStringLiteral("appearance"));
+        const QString themeType = settings.value(QStringLiteral("themeType")).toString();
+        const QString themeValue = settings.value(QStringLiteral("themeValue")).toString();
+        settings.endGroup();
+
+        // Default when user has never selected a theme: native system style.
+        if (themeType.isEmpty() || themeType == QStringLiteral("system"))
+        {
+            applyQtStyleTheme(m_systemStyleName);
+            setStyleSheet(QString());
+            refreshOpenEditorSyntaxThemes();
+            return;
+        }
+
+        if (themeType == QStringLiteral("texloom"))
+        {
+            applyQtStyleTheme(QStringLiteral("Fusion"));
+            applyTexLoomAppearance();
+            refreshOpenEditorSyntaxThemes();
+            return;
+        }
+
+        if (themeType == QStringLiteral("qt"))
+        {
+            applyQtStyleTheme(themeValue);
+            setStyleSheet(QString());
+            refreshOpenEditorSyntaxThemes();
+            return;
+        }
+
+        if (themeType == QStringLiteral("gtk"))
+        {
+            applyGtkTheme(themeValue);
+            setStyleSheet(QString());
+            refreshOpenEditorSyntaxThemes();
+            return;
+        }
+
+        applyQtStyleTheme(m_systemStyleName);
+        setStyleSheet(QString());
+        refreshOpenEditorSyntaxThemes();
+    }
+
+    void MainWindow::refreshOpenEditorSyntaxThemes()
+    {
+        for (auto it = m_openEditors.begin(); it != m_openEditors.end(); ++it)
+        {
+            if (it.value())
+            {
+                it.value()->refreshSyntaxTheme();
+            }
+        }
     }
 
     void MainWindow::createStatusBar()
