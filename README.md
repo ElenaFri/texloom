@@ -5,6 +5,8 @@
 
 A simple Markdown-to-LaTeX converter and text editor. With (useful) GUI.
 
+Current preview stack: embedded PDF preview panel powered by QPdfView (QtPdfWidgets).
+
 ## Dependencies
 
 Install all required dependencies (Linux only):
@@ -14,6 +16,9 @@ Install all required dependencies (Linux only):
 ```
 
 Or see [docs/dependencies.md](docs/dependencies.md) for manual installation.
+
+For manual Linux installs, make sure Qt PDF development packages are present
+(`qt6-pdf-dev` on Debian/Ubuntu).
 
 ## Build
 

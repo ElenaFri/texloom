@@ -3,6 +3,12 @@
 #include <QWidget>
 #include <QLabel>
 
+QT_BEGIN_NAMESPACE
+class QPdfDocument;
+class QPdfView;
+class QToolButton;
+QT_END_NAMESPACE
+
 namespace texloom
 {
 
@@ -37,11 +43,25 @@ namespace texloom
         void pdfLoadFailed(const QString &error);
 
     private:
-        QString m_currentPdf;
-        QLabel *m_placeholderLabel = nullptr;
+        void updateNavigationUi();
+        void setStatusMessage(const QString &message);
 
-        // TODO: Replace with actual PDF viewer widget
-        // QPdfView* m_pdfView = nullptr;
+        QString m_currentPdf;
+        QString m_pendingPdfPath;
+
+        QPdfDocument *m_pdfDocument = nullptr;
+        QPdfView *m_pdfView = nullptr;
+
+        QToolButton *m_prevPageButton = nullptr;
+        QToolButton *m_nextPageButton = nullptr;
+        QLabel *m_pageLabel = nullptr;
+
+        QToolButton *m_zoomOutButton = nullptr;
+        QToolButton *m_zoomInButton = nullptr;
+        QToolButton *m_fitWidthButton = nullptr;
+        QToolButton *m_fitPageButton = nullptr;
+
+        QLabel *m_statusLabel = nullptr;
     };
 
 } // namespace texloom

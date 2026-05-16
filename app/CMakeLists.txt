@@ -43,6 +43,8 @@ find_package(Qt6 6.4 REQUIRED COMPONENTS
     Core
     Widgets
     Concurrent
+    Pdf
+    PdfWidgets
 )
 
 # Find Qt6 Test (optional, for testing)
@@ -147,6 +149,8 @@ target_link_libraries(texloom_ui PUBLIC
     texloom_core
     Qt6::Core
     Qt6::Widgets
+    Qt6::Pdf
+    Qt6::PdfWidgets
 )
 
 # Create executable
@@ -176,6 +180,8 @@ target_link_libraries(texloom PRIVATE
     Qt6::Core
     Qt6::Widgets
     Qt6::Concurrent
+    Qt6::Pdf
+    Qt6::PdfWidgets
 )
 
 # Platform-specific settings

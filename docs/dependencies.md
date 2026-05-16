@@ -11,7 +11,7 @@ These are required to compile TexLoom from source.
 ### Required
 
 - **Qt 6.5+** — GUI framework
-  - Required components: Widgets, Core, Concurrent
+  - Required components: Widgets, Core, Concurrent, Pdf, PdfWidgets
   - LTS version recommended (6.5 or 6.6)
   
 - **CMake 3.25+** — Build system
@@ -54,7 +54,7 @@ These must be installed on the user's system to run TexLoom.
 # Build dependencies
 sudo apt update
 sudo apt install build-essential cmake git
-sudo apt install qt6-base-dev qt6-base-dev-tools
+sudo apt install qt6-base-dev qt6-base-dev-tools qt6-pdf-dev
 
 # Runtime dependencies
 sudo apt install pandoc texlive-xetex texlive-latex-base texlive-latex-recommended texlive-fonts-recommended lmodern
@@ -68,7 +68,7 @@ sudo apt install xvfb valgrind lcov
 ```bash
 # Build dependencies
 sudo dnf install cmake gcc-c++ git
-sudo dnf install qt6-qtbase-devel
+sudo dnf install qt6-qtbase-devel qt6-qtpdf-devel
 
 # Runtime dependencies
 sudo dnf install pandoc texlive-xetex texlive-collection-fontsrecommended texlive-lm
@@ -82,6 +82,7 @@ sudo dnf install xorg-x11-server-Xvfb valgrind lcov
 ```bash
 # Build dependencies
 sudo pacman -S base-devel cmake git qt6-base
+sudo pacman -S qt6-pdf
 
 # Runtime dependencies
 sudo pacman -S pandoc texlive-xetex texlive-fontsrecommended
