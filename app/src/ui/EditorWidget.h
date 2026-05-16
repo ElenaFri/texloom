@@ -5,6 +5,8 @@
 namespace texloom
 {
 
+    class MarkdownHighlighter;
+
     /**
      * @brief Markdown editor widget
      *
@@ -50,6 +52,7 @@ namespace texloom
 
     private:
         QString m_currentFile;
+        MarkdownHighlighter *m_highlighter = nullptr;
         Mode m_mode = Mode::Code;
     };
 

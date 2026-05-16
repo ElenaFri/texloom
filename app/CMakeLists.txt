@@ -76,6 +76,7 @@ set(HEADERS
 set(UI_SOURCES
     src/ui/MainWindow.cpp
     src/ui/EditorWidget.cpp
+    src/ui/MarkdownHighlighter.cpp
     src/ui/PreviewWidget.cpp
     src/ui/ProjectTreeWidget.cpp
     src/ui/NewProjectDialog.cpp
@@ -84,6 +85,7 @@ set(UI_SOURCES
 set(UI_HEADERS
     src/ui/MainWindow.h
     src/ui/EditorWidget.h
+    src/ui/MarkdownHighlighter.h
     src/ui/PreviewWidget.h
     src/ui/ProjectTreeWidget.h
     src/ui/NewProjectDialog.h
