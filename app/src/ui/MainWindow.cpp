@@ -32,6 +32,9 @@
 #include <QSet>
 #include <QSettings>
 #include <QProcess>
+#include <QDateTime>
+#include <QDesktopServices>
+#include <QUrl>
 
 namespace texloom
 {
@@ -82,6 +85,10 @@ namespace texloom
 
         connect(m_conversionEngine, &ConversionEngine::pdfGenerated,
                 m_previewWidget, &PreviewWidget::loadPdf);
+        connect(m_conversionEngine, &ConversionEngine::pdfGenerated,
+                this, [this](const QString &path)
+                { m_lastPdfPath = path; updateActions(); });
+        connect(m_openPdfButton, &QPushButton::clicked, this, &MainWindow::onOpenPdf);
 
         connect(m_previewWidget, &PreviewWidget::pdfLoaded, this, [this](const QString &path)
                 { statusBar()->showMessage(tr("PDF loaded: %1").arg(QFileInfo(path).fileName()), 3000); });
@@ -142,33 +149,33 @@ namespace texloom
         statusGrid->setColumnStretch(1, 0);
 
         auto *engineKey = new QLabel(tr("LaTeX engine"), statusCard);
-        auto *engineValue = new QLabel(tr("pdfLaTeX"), statusCard);
-        engineValue->setObjectName("statusValue");
-        engineValue->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        m_statusEngineLabel = new QLabel(tr("XeLaTeX"), statusCard);
+        m_statusEngineLabel->setObjectName("statusValue");
+        m_statusEngineLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
         auto *compileKey = new QLabel(tr("Compilation"), statusCard);
-        auto *compileValue = new QLabel(tr("No errors"), statusCard);
-        compileValue->setObjectName("statusValue");
-        compileValue->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        m_statusCompileLabel = new QLabel(tr("—"), statusCard);
+        m_statusCompileLabel->setObjectName("statusValue");
+        m_statusCompileLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
         auto *lastCompileKey = new QLabel(tr("Last compilation"), statusCard);
-        auto *lastCompileValue = new QLabel(tr("1 minute ago"), statusCard);
-        lastCompileValue->setObjectName("statusValue");
-        lastCompileValue->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        m_statusLastCompileLabel = new QLabel(tr("—"), statusCard);
+        m_statusLastCompileLabel->setObjectName("statusValue");
+        m_statusLastCompileLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
         statusGrid->addWidget(engineKey, 0, 0);
-        statusGrid->addWidget(engineValue, 0, 1);
+        statusGrid->addWidget(m_statusEngineLabel, 0, 1);
         statusGrid->addWidget(compileKey, 1, 0);
-        statusGrid->addWidget(compileValue, 1, 1);
+        statusGrid->addWidget(m_statusCompileLabel, 1, 1);
         statusGrid->addWidget(lastCompileKey, 2, 0);
-        statusGrid->addWidget(lastCompileValue, 2, 1);
+        statusGrid->addWidget(m_statusLastCompileLabel, 2, 1);
 
         statusLayout->addLayout(statusGrid);
 
-        auto *openPdfButton = new QPushButton(tr("Open PDF"), statusCard);
-        openPdfButton->setObjectName("primaryButton");
-        openPdfButton->setMinimumHeight(36);
-        statusLayout->addWidget(openPdfButton);
+        m_openPdfButton = new QPushButton(tr("Open PDF"), statusCard);
+        m_openPdfButton->setObjectName("primaryButton");
+        m_openPdfButton->setMinimumHeight(36);
+        statusLayout->addWidget(m_openPdfButton);
 
         leftLayout->addWidget(statusCard, 0);
 
@@ -688,6 +695,7 @@ namespace texloom
         m_actionConvertToLatex->setEnabled(projectOpen && !conversionBusy);
         m_actionCompilePdf->setEnabled(projectOpen && !conversionBusy);
         m_actionCompileAndPreview->setEnabled(projectOpen && !conversionBusy);
+        m_openPdfButton->setEnabled(!m_lastPdfPath.isEmpty() && QFileInfo::exists(m_lastPdfPath));
     }
 
     bool MainWindow::maybeSave()
@@ -1003,6 +1011,13 @@ namespace texloom
         statusBar()->showMessage(tr("Build Settings - not yet implemented"), 3000);
     }
 
+    void MainWindow::onOpenPdf()
+    {
+        if (m_lastPdfPath.isEmpty() || !QFileInfo::exists(m_lastPdfPath))
+            return;
+        QDesktopServices::openUrl(QUrl::fromLocalFile(m_lastPdfPath));
+    }
+
     void MainWindow::onProjectOpened(const QString &path)
     {
         m_projectTree->setProjectRoot(m_projectModel->projectName(), path);
@@ -1029,6 +1044,9 @@ namespace texloom
 
         m_projectTree->clear();
         m_previewWidget->clear();
+        m_lastPdfPath.clear();
+        m_statusCompileLabel->setText(tr("—"));
+        m_statusLastCompileLabel->setText(tr("—"));
 
         updateWindowTitle();
         updateActions();
@@ -1141,12 +1159,19 @@ namespace texloom
         m_actionToggleLog->setChecked(false);
         m_logDock->hide();
         statusBar()->showMessage(tr("Conversion completed: %1").arg(output), 5000);
+        if (output.endsWith(QLatin1String(".pdf"), Qt::CaseInsensitive))
+        {
+            m_statusCompileLabel->setText(tr("OK"));
+            m_statusLastCompileLabel->setText(QDateTime::currentDateTime().toString(QStringLiteral("hh:mm:ss")));
+        }
     }
 
     void MainWindow::onConversionFailed(const QString &error)
     {
         updateActions();
         statusBar()->showMessage(tr("Conversion failed: %1").arg(error), 5000);
+        m_statusCompileLabel->setText(tr("Error"));
+        m_statusLastCompileLabel->setText(QDateTime::currentDateTime().toString(QStringLiteral("hh:mm:ss")));
         QMessageBox::warning(this, tr("Conversion Error"), error);
     }
 

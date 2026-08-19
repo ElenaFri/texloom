@@ -95,9 +95,9 @@ namespace texloom
 
         // Form layout
         auto *formLayout = new QFormLayout;
-        formLayout->addRow(tr("Project &Name:"), m_nameEdit);
-        formLayout->addRow(tr("&Location:"), locationLayout);
-        formLayout->addRow(tr("&Template:"), m_templateCombo);
+        formLayout->addRow(tr("Project Name:"), m_nameEdit);
+        formLayout->addRow(tr("Location:"), locationLayout);
+        formLayout->addRow(tr("Template:"), m_templateCombo);
 
         // Buttons
         m_createButton = new QPushButton(tr("Create"), this);

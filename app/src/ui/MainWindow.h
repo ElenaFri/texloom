@@ -4,6 +4,8 @@
 #include <QSplitter>
 #include <QTabWidget>
 #include <QDockWidget>
+#include <QLabel>
+#include <QPushButton>
 #include <QMap>
 
 namespace texloom
@@ -94,6 +96,7 @@ namespace texloom
         // Internal helpers exposed as slots for deterministic tests
         void onAddFileToProject(const QString &filePath);
         void onCreateMarkdownFileAtPath(const QString &filePath);
+        void onOpenPdf();
 
     private:
         void setupUi();
@@ -162,6 +165,13 @@ namespace texloom
         QAction *m_actionCompilePdf = nullptr;
         QAction *m_actionCompileAndPreview = nullptr;
         QAction *m_actionBuildSettings = nullptr;
+
+        // Status card
+        QLabel *m_statusEngineLabel = nullptr;
+        QLabel *m_statusCompileLabel = nullptr;
+        QLabel *m_statusLastCompileLabel = nullptr;
+        QPushButton *m_openPdfButton = nullptr;
+        QString m_lastPdfPath;
     };
 
 } // namespace texloom
