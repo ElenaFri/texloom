@@ -2,6 +2,12 @@
 
 #include <QPlainTextEdit>
 
+QT_BEGIN_NAMESPACE
+class QFrame;
+class QLabel;
+class QLineEdit;
+QT_END_NAMESPACE
+
 namespace texloom
 {
 
@@ -47,17 +53,35 @@ namespace texloom
         void setEditorMode(Mode mode);
         void refreshSyntaxTheme();
 
+        void showFindBar();
+
+        bool eventFilter(QObject *obj, QEvent *event) override;
+
     protected:
         void changeEvent(QEvent *event) override;
+        void resizeEvent(QResizeEvent *event) override;
+        void keyPressEvent(QKeyEvent *event) override;
 
     signals:
         void fileModified(bool modified);
         void modeChanged(Mode mode);
 
+    private slots:
+        void closeFindBar();
+        void findNext();
+        void findPrevious();
+        void onFindTextChanged(const QString &text);
+
     private:
+        void updateFindBarGeometry();
+
         QString m_currentFile;
         MarkdownHighlighter *m_highlighter = nullptr;
         Mode m_mode = Mode::Code;
+
+        QFrame *m_findBar = nullptr;
+        QLineEdit *m_findEdit = nullptr;
+        QLabel *m_findResultLabel = nullptr;
     };
 
 } // namespace texloom

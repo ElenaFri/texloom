@@ -899,7 +899,9 @@ namespace texloom
 
     void MainWindow::onFind()
     {
-        statusBar()->showMessage(tr("Find - not yet implemented"), 3000);
+        auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->currentWidget());
+        if (editor)
+            editor->showFindBar();
     }
 
     void MainWindow::onToggleProjectTree()
