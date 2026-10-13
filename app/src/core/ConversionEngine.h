@@ -49,6 +49,12 @@ namespace texloom
         void setXelatexOptions(const QStringList &options);
         void setTemplatePath(const QString &path);
 
+        // Bibliography (BibTeX). When a non-empty path is set, Pandoc is invoked
+        // with --citeproc and --bibliography so that Markdown citations such as
+        // [@key] are resolved and a reference list is generated.
+        void setBibliographyPath(const QString &path);
+        [[nodiscard]] QString bibliographyPath() const noexcept { return m_bibliographyPath; }
+
     signals:
         void conversionStarted(Stage stage);
         void conversionProgress(const QString &message);
@@ -76,6 +82,7 @@ namespace texloom
         QStringList m_pandocOptions;
         QStringList m_xelatexOptions;
         QString m_templatePath;
+        QString m_bibliographyPath;
 
         // For multi-stage conversion
         QString m_pendingPdfOutput;

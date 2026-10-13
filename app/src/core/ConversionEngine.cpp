@@ -107,6 +107,11 @@ namespace texloom
         m_templatePath = path;
     }
 
+    void ConversionEngine::setBibliographyPath(const QString &path)
+    {
+        m_bibliographyPath = path;
+    }
+
     void ConversionEngine::runPandoc(const QString &input, const QString &output)
     {
         // Delete old process if exists (not owned by parent if recreated)
@@ -126,6 +131,11 @@ namespace texloom
         if (!m_templatePath.isEmpty())
         {
             args << "--template" << m_templatePath;
+        }
+
+        if (!m_bibliographyPath.isEmpty())
+        {
+            args << "--citeproc" << "--bibliography" << m_bibliographyPath;
         }
 
         args << "-o" << output << input;

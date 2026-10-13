@@ -5,7 +5,7 @@
 - [x] Multi-file project support (book, thesis, report)
 - [ ] Real-time PDF preview
 - [x] Integrated LaTeX templates (easy to configure) — article, report, thesis
-- [ ] Simple bibliography management (BibTeX)
+- [x] Simple bibliography management (BibTeX) — `.bib` selection per project, wired into Pandoc via `--citeproc`
 - [ ] Clean export for scientific articles and reports
 - [x] Fast, stable compilation pipeline (Pandoc + XeLaTeX, async, fully tested)
 - [ ] Multi-language support (English and French, to begin with)

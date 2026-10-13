@@ -58,6 +58,48 @@ private slots:
         return mdFile;
     }
 
+    QString createTestBibFile()
+    {
+        QString bibFile = m_tempDir->path() + "/refs.bib";
+        QFile file(bibFile);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            return QString();
+        }
+
+        QTextStream out(&file);
+        out << "@book{knuth1984,\n";
+        out << "  author    = {Knuth, Donald E.},\n";
+        out << "  title     = {The TeXbook},\n";
+        out << "  year      = {1984},\n";
+        out << "  publisher = {Addison-Wesley}\n";
+        out << "}\n";
+        file.close();
+
+        return bibFile;
+    }
+
+    QString createCitingMarkdownFile()
+    {
+        QString mdFile = m_tempDir->path() + "/citing.md";
+        QFile file(mdFile);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            return QString();
+        }
+
+        QTextStream out(&file);
+        out << "---\n";
+        out << "title: Citing Document\n";
+        out << "---\n\n";
+        out << "# Introduction\n\n";
+        out << "Typesetting is explained in [@knuth1984].\n\n";
+        out << "# References\n";
+        file.close();
+
+        return mdFile;
+    }
+
     // ========== SUCCESS SCENARIOS ==========
 
     void testInitialState()
@@ -92,6 +134,20 @@ private slots:
         m_engine->setTemplatePath(templatePath);
 
         QVERIFY(!m_engine->isBusy());
+    }
+
+    void testSetBibliographyPath()
+    {
+        QCOMPARE(m_engine->bibliographyPath(), QString());
+
+        const QString bibPath = "/path/to/refs.bib";
+        m_engine->setBibliographyPath(bibPath);
+        QCOMPARE(m_engine->bibliographyPath(), bibPath);
+        QVERIFY(!m_engine->isBusy());
+
+        // Clearing the bibliography should be possible.
+        m_engine->setBibliographyPath(QString());
+        QCOMPARE(m_engine->bibliographyPath(), QString());
     }
 
     void testConvertToLatexWithPandoc()
@@ -422,6 +478,84 @@ private slots:
         QString content = QString::fromUtf8(file.readAll());
         QVERIFY(content.contains("\\title{"));
         QVERIFY(content.contains("\\author{"));
+    }
+
+    void testConvertWithBibliography()
+    {
+        if (!isPandocAvailable())
+        {
+            QSKIP("Pandoc not installed, skipping bibliography test");
+        }
+
+        const QString bibFile = createTestBibFile();
+        QVERIFY(!bibFile.isEmpty());
+
+        m_engine->setBibliographyPath(bibFile);
+        QCOMPARE(m_engine->bibliographyPath(), bibFile);
+
+        const QString mdFile = createCitingMarkdownFile();
+        QVERIFY(!mdFile.isEmpty());
+        const QString latexFile = m_tempDir->path() + "/output_bib.tex";
+
+        QSignalSpy spyCompleted(m_engine, &ConversionEngine::conversionCompleted);
+        QSignalSpy spyFailed(m_engine, &ConversionEngine::conversionFailed);
+
+        m_engine->convertToLatex(mdFile, latexFile);
+
+        bool finished = spyCompleted.wait(10000) || spyFailed.wait(100);
+        QVERIFY(finished);
+
+        if (spyFailed.count() > 0)
+        {
+            qWarning() << "Bibliography conversion failed:" << spyFailed.takeFirst().at(0).toString();
+            QFAIL("Conversion with bibliography failed");
+        }
+
+        QVERIFY(QFile::exists(latexFile));
+
+        // With --citeproc, Pandoc resolves the citation and appends a reference
+        // list, so the generated LaTeX should mention the cited work.
+        QFile file(latexFile);
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        const QString content = QString::fromUtf8(file.readAll());
+        QVERIFY(content.contains("Knuth"));
+        QVERIFY(content.contains("1984"));
+    }
+
+    void testConvertWithoutBibliographyHasNoReferences()
+    {
+        if (!isPandocAvailable())
+        {
+            QSKIP("Pandoc not installed, skipping bibliography test");
+        }
+
+        // No bibliography set: the citation key stays unresolved and no
+        // reference entry for the cited work is produced.
+        QCOMPARE(m_engine->bibliographyPath(), QString());
+
+        const QString mdFile = createCitingMarkdownFile();
+        QVERIFY(!mdFile.isEmpty());
+        const QString latexFile = m_tempDir->path() + "/output_nobib.tex";
+
+        QSignalSpy spyCompleted(m_engine, &ConversionEngine::conversionCompleted);
+        QSignalSpy spyFailed(m_engine, &ConversionEngine::conversionFailed);
+
+        m_engine->convertToLatex(mdFile, latexFile);
+
+        bool finished = spyCompleted.wait(10000) || spyFailed.wait(100);
+        QVERIFY(finished);
+
+        if (spyFailed.count() > 0)
+        {
+            QFAIL("Conversion without bibliography failed");
+        }
+
+        QVERIFY(QFile::exists(latexFile));
+
+        QFile file(latexFile);
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        const QString content = QString::fromUtf8(file.readAll());
+        QVERIFY(!content.contains("Addison-Wesley"));
     }
 
     void testConvertWithCustomPandocOptions()

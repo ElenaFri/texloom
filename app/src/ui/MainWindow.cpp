@@ -342,6 +342,11 @@ namespace texloom
 
         m_actionBuildSettings = new QAction(tr("Build Settings..."), this);
         connect(m_actionBuildSettings, &QAction::triggered, this, &MainWindow::onBuildSettings);
+
+        // Tools menu
+        m_actionBibliography = new QAction(tr("Bibliography..."), this);
+        m_actionBibliography->setStatusTip(tr("Select a BibTeX (.bib) file used to resolve citations"));
+        connect(m_actionBibliography, &QAction::triggered, this, &MainWindow::onManageBibliography);
     }
 
     void MainWindow::createMenus()
@@ -384,6 +389,10 @@ namespace texloom
         buildMenu->addAction(m_actionCompileAndPreview);
         buildMenu->addSeparator();
         buildMenu->addAction(m_actionBuildSettings);
+
+        // Tools menu
+        QMenu *toolsMenu = menuBar()->addMenu(tr("&Tools"));
+        toolsMenu->addAction(m_actionBibliography);
 
         // Help menu
         QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
@@ -695,6 +704,7 @@ namespace texloom
         m_actionConvertToLatex->setEnabled(projectOpen && !conversionBusy);
         m_actionCompilePdf->setEnabled(projectOpen && !conversionBusy);
         m_actionCompileAndPreview->setEnabled(projectOpen && !conversionBusy);
+        m_actionBibliography->setEnabled(projectOpen);
         m_openPdfButton->setEnabled(!m_lastPdfPath.isEmpty() && QFileInfo::exists(m_lastPdfPath));
     }
 
@@ -957,6 +967,32 @@ namespace texloom
             QFileInfo::exists(templatePath) ? templatePath : QString{});
     }
 
+    void MainWindow::applyProjectBibliography()
+    {
+        const QString bib = m_projectModel->bibliographyFile();
+        if (bib.isEmpty())
+        {
+            m_conversionEngine->setBibliographyPath(QString{});
+            return;
+        }
+
+        QString resolved = bib;
+        if (QFileInfo(bib).isRelative() && !m_projectModel->projectPath().isEmpty())
+        {
+            resolved = QDir(m_projectModel->projectPath()).filePath(bib);
+        }
+
+        if (!QFileInfo::exists(resolved))
+        {
+            m_conversionEngine->setBibliographyPath(QString{});
+            statusBar()->showMessage(
+                tr("Bibliography file not found: %1").arg(bib), 5000);
+            return;
+        }
+
+        m_conversionEngine->setBibliographyPath(resolved);
+    }
+
     void MainWindow::onConvertToLatex()
     {
         auto *editor = qobject_cast<EditorWidget *>(m_editorTabs->currentWidget());
@@ -973,6 +1009,7 @@ namespace texloom
         }
 
         applyProjectTemplate();
+        applyProjectBibliography();
 
         QString mdFile = editor->currentFile();
         QString latexFile = QFileInfo(mdFile).absolutePath() + "/" +
@@ -996,6 +1033,7 @@ namespace texloom
         }
 
         applyProjectTemplate();
+        applyProjectBibliography();
 
         QString mdFile = editor->currentFile();
         QString pdfFile = QFileInfo(mdFile).absolutePath() + "/" +
@@ -1011,6 +1049,57 @@ namespace texloom
     void MainWindow::onBuildSettings()
     {
         statusBar()->showMessage(tr("Build Settings - not yet implemented"), 3000);
+    }
+
+    void MainWindow::onManageBibliography()
+    {
+        if (!m_projectModel->isOpen())
+        {
+            statusBar()->showMessage(tr("No project open"), 3000);
+            return;
+        }
+
+        const QString current = m_projectModel->bibliographyFile();
+
+        // If a bibliography is already set, offer to change or clear it.
+        if (!current.isEmpty())
+        {
+            QMessageBox box(this);
+            box.setWindowTitle(tr("Bibliography"));
+            box.setText(tr("Current bibliography:\n%1").arg(current));
+            QPushButton *changeButton = box.addButton(tr("Change..."), QMessageBox::AcceptRole);
+            QPushButton *clearButton = box.addButton(tr("Remove"), QMessageBox::DestructiveRole);
+            box.addButton(QMessageBox::Cancel);
+            box.exec();
+
+            if (box.clickedButton() == clearButton)
+            {
+                m_projectModel->setBibliographyFile(QString{});
+                statusBar()->showMessage(tr("Bibliography removed"), 3000);
+                return;
+            }
+            if (box.clickedButton() != changeButton)
+            {
+                return;
+            }
+        }
+
+        const QString startDir = !current.isEmpty()
+                                     ? QFileInfo(current).absolutePath()
+                                     : m_projectModel->projectPath();
+
+        const QString file = QFileDialog::getOpenFileName(
+            this, tr("Select Bibliography File"), startDir,
+            tr("BibTeX Files (*.bib);;All Files (*)"));
+
+        if (file.isEmpty())
+        {
+            return;
+        }
+
+        m_projectModel->setBibliographyFile(file);
+        statusBar()->showMessage(
+            tr("Bibliography set: %1").arg(QFileInfo(file).fileName()), 3000);
     }
 
     void MainWindow::onOpenPdf()

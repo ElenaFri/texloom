@@ -690,6 +690,50 @@ private slots:
         QVERIFY(engine(w)->isBusy());
     }
 
+    void testCompilePdfUsesProjectBibliography()
+    {
+        MainWindow w;
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QString projFile = createTempProject(dir);
+        model(w)->loadProject(projFile);
+
+        // Create a real .bib file and register it on the project so that
+        // applyProjectBibliography() resolves and propagates it to the engine.
+        const QString bibPath = dir.path() + "/refs.bib";
+        QFile bib(bibPath);
+        QVERIFY(bib.open(QIODevice::WriteOnly | QIODevice::Text));
+        bib.write("@book{k1984, author={Knuth, Donald E.}, title={The TeXbook}, year={1984}}\n");
+        bib.close();
+        model(w)->setBibliographyFile(bibPath);
+
+        const QString filePath = dir.path() + "/chapters/chapter1.md";
+        QMetaObject::invokeMethod(&w, "onFileDoubleClicked", Q_ARG(QString, filePath));
+        QCOMPARE(tabs(w)->count(), 1);
+
+        QMetaObject::invokeMethod(&w, "onCompilePdf");
+
+        // The bibliography must have been propagated to the conversion engine.
+        QCOMPARE(engine(w)->bibliographyPath(), bibPath);
+        QVERIFY(engine(w)->isBusy());
+    }
+
+    void testBibliographyActionDisabledWithoutProject()
+    {
+        MainWindow w;
+        QAction *bibAction = findAction(w, "Bibliography");
+        QVERIFY(bibAction != nullptr);
+        QVERIFY(!bibAction->isEnabled());
+    }
+
+    void testManageBibliographyNoProject()
+    {
+        MainWindow w;
+        // No project open: must not crash and must not change any state.
+        QMetaObject::invokeMethod(&w, "onManageBibliography");
+        QVERIFY(model(w)->bibliographyFile().isEmpty());
+    }
+
     // ========== CONVERSION SIGNALS ==========
 
     void testConversionStartedShowsLog()

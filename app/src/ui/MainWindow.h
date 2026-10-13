@@ -74,6 +74,9 @@ namespace texloom
         void onCompileAndPreview();
         void onBuildSettings();
 
+        // Tools menu
+        void onManageBibliography();
+
         // Project model signals
         void onProjectOpened(const QString &path);
         void onProjectClosed();
@@ -122,6 +125,12 @@ namespace texloom
         // the file cannot be found.
         void applyProjectTemplate();
 
+        // Apply the project's bibliography (.bib) to the conversion engine.
+        // Resolves relative paths against the project directory and sets the
+        // bibliography on the engine; clears it when none is configured or the
+        // file cannot be found.
+        void applyProjectBibliography();
+
         // Core components
         ProjectModel *m_projectModel = nullptr;
         ConversionEngine *m_conversionEngine = nullptr;
@@ -165,6 +174,9 @@ namespace texloom
         QAction *m_actionCompilePdf = nullptr;
         QAction *m_actionCompileAndPreview = nullptr;
         QAction *m_actionBuildSettings = nullptr;
+
+        // Actions - Tools menu
+        QAction *m_actionBibliography = nullptr;
 
         // Status card
         QLabel *m_statusEngineLabel = nullptr;
